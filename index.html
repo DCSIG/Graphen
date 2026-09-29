@@ -1,0 +1,3270 @@
+<!DOCTYPE html><html lang="de"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#175cba">
+  <title>Graphen in der Navigation – digitales Arbeitsblatt</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+  <style>
+    :root {
+      --blue: #175cba;
+      --blue-dark: #103d81;
+      --blue-light: #eaf2ff;
+      --green: #168044;
+      --green-light: #e8f8ee;
+      --red: #d52b39;
+      --orange: #ed8a12;
+      --purple: #8541b2;
+      --purple-light: #f4eafb;
+      --ink: #203047;
+      --muted: #586981;
+      --border: #d7e0eb;
+      --background: #eff4fa;
+      --radius: 17px;
+      --shadow: 0 8px 25px rgb(25 48 81 / 12%);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, summary { font: inherit; }
+
+    button, .download-link {
+      min-height: 48px;
+      min-width: 48px;
+      padding: 11px 15px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: white;
+      color: var(--ink);
+      font-weight: 650;
+      line-height: 1.3;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    button:focus-visible,
+    input:focus-visible,
+    summary:focus-visible,
+    a:focus-visible,
+    #map:focus-visible {
+      outline: 3px solid var(--orange);
+      outline-offset: 3px;
+    }
+
+    button.primary, .download-link {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+    }
+
+    button.success {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    button.danger {
+      color: #b2202d;
+      border-color: #e9b7bc;
+      background: #fff6f6;
+    }
+
+    button.bonus {
+      color: #6c2a94;
+      background: var(--purple-light);
+      border-color: #d8bee9;
+    }
+
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    [hidden] { display: none !important; }
+
+    .site-header {
+      background: linear-gradient(115deg, #103d81, #247dd1);
+      color: white;
+      padding: 19px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.3rem, 3vw, 1.9rem);
+      line-height: 1.2;
+    }
+
+    .subtitle { margin: 7px 0 0; font-size: .9rem; opacity: .95; }
+
+    .counters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .counter {
+      border: 1px solid rgb(255 255 255 / 35%);
+      border-radius: 13px;
+      background: rgb(255 255 255 / 13%);
+      padding: 8px 13px;
+      white-space: nowrap;
+    }
+
+    .counter strong { font-size: 1.2rem; }
+
+    .success-banner {
+      margin: 12px 16px 0;
+      padding: 13px 18px;
+      border: 1px solid #a6d9b8;
+      border-radius: 13px;
+      background: var(--green-light);
+      color: #125f33;
+      font-weight: 750;
+      animation: banner-in .35s ease-out;
+    }
+
+    .workspace {
+      display: flex;
+      align-items: stretch;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1900px;
+      margin: auto;
+    }
+
+    .map-panel {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      height: max(650px, calc(100dvh - 160px));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #e1e9ee;
+      box-shadow: var(--shadow);
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background: #dfe8e4;
+    }
+
+    .task-banner {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 150px);
+      max-width: 620px;
+      z-index: 800;
+      padding: 12px 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #b9ccec;
+      border-radius: 15px;
+      background: rgb(255 255 255 / 96%);
+      box-shadow: var(--shadow);
+    }
+
+    .task-icon { font-size: 1.55rem; flex-shrink: 0; }
+    .task-copy { flex: 1; min-width: 0; }
+    .task-copy strong { display: block; font-size: .97rem; line-height: 1.3; }
+    .task-copy p { margin: 4px 0 0; font-size: .8rem; line-height: 1.4; color: var(--muted); }
+    .task-banner button { padding: 0; font-size: 1.3rem; color: var(--blue); }
+
+    .tile-warning {
+      position: absolute;
+      bottom: 35px;
+      right: 12px;
+      z-index: 750;
+      max-width: min(280px, 58%);
+      padding: 10px;
+      background: #fff4d5;
+      border: 1px solid #e6c977;
+      border-radius: 10px;
+      font-size: .8rem;
+    }
+
+    .sidebar { flex: 0 0 330px; width: 330px; }
+
+    .panel {
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      box-shadow: 0 3px 12px rgb(25 48 81 / 5%);
+    }
+
+    .panel h2 { margin: 0 0 12px; font-size: 1.08rem; }
+    .stepper { list-style: none; margin: 0; padding: 0; }
+    .stepper li + li { margin-top: 7px; }
+
+    .step {
+      display: flex;
+      width: 100%;
+      text-align: left;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-color: transparent;
+      background: #f4f6f9;
+      font-size: .9rem;
+    }
+
+    .step-state { width: 25px; text-align: center; flex-shrink: 0; }
+    .step-label { flex: 1; }
+    .step small { display: block; margin-top: 3px; font-size: .73rem; font-weight: 500; }
+    .step.current { background: var(--blue-light); color: var(--blue-dark); border-color: #8fb4e6; }
+    .step.complete { background: var(--green-light); color: #146335; }
+    .step.locked { color: #677486; }
+
+    .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .tools button { font-size: .86rem; padding: 10px 8px; }
+    .tools .wide { grid-column: 1 / -1; }
+    .tools .active { background: var(--blue); color: white; border-color: var(--blue); }
+    .tools .check-button { background: #fff2d8; color: #78500b; border-color: #ecc77e; }
+
+    .hint {
+      margin-top: 13px;
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      background: #f0f5fd;
+      padding: 11px;
+      font-size: .86rem;
+    }
+
+    .progress-note { margin: 11px 0 0; font-size: .83rem; color: var(--muted); }
+
+    details.panel { padding: 0; }
+
+    details.panel summary {
+      cursor: pointer;
+      min-height: 48px;
+      padding: 14px 16px;
+      font-weight: 700;
+    }
+
+    .tips-content { padding: 0 16px 15px; font-size: .9rem; }
+    .tips-content p { margin: 0 0 9px; }
+    .tips-content ul { margin: 8px 0; padding-left: 20px; }
+
+    .page-note {
+      margin: 0 18px 18px;
+      font-size: .78rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* 48-px-Tippfläche mit einem 30-px-Knoten in der Mitte. */
+    .graph-marker {
+      border: 0;
+      background: transparent;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      overflow: visible !important;
+    }
+
+    .graph-dot {
+      width: 30px;
+      height: 30px;
+      border: 2px solid white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--blue);
+      color: white;
+      font-size: 10px;
+      font-weight: 800;
+      box-shadow: 0 2px 7px rgb(0 0 0 / 38%);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .graph-dot.school { background: var(--green); font-size: 17px; }
+    .graph-dot.store { background: var(--red); font-size: 17px; }
+    .graph-dot.home { background: var(--purple); font-size: 17px; }
+
+    .graph-dot.selected {
+      background: var(--orange);
+      outline: 5px solid rgb(237 138 18 / 38%);
+      box-shadow: 0 0 0 2px #b45b00;
+    }
+
+    .graph-dot.unplaced {
+      width: 42px;
+      height: 42px;
+      font-size: 25px;
+      animation: marker-pulse 1.6s infinite;
+    }
+
+    .place-label {
+      position: absolute;
+      top: 46px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 1px solid #d5dfeb;
+      border-radius: 7px;
+      background: rgb(255 255 255 / 96%);
+      padding: 3px 7px;
+      color: #263852;
+      font: 700 10px/1.3 system-ui, sans-serif;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+    }
+
+    .legend {
+      padding: 10px 12px;
+      border: 1px solid #d1dce7;
+      border-radius: 12px;
+      background: rgb(255 255 255 / 96%);
+      box-shadow: 0 3px 13px rgb(0 0 0 / 12%);
+      color: var(--ink);
+      font: 12px/1.5 system-ui, sans-serif;
+      max-width: 240px;
+    }
+
+    .legend strong { display: block; margin-bottom: 4px; }
+    .legend-row { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+    .legend-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+    .legend-line { width: 22px; border-top: 4px dashed var(--red); flex-shrink: 0; }
+    .legend-path { width: 22px; border-top: 4px solid var(--green); flex-shrink: 0; }
+    .legend .school { background: var(--green); }
+    .legend .store { background: var(--red); }
+    .legend .custom { background: var(--blue); }
+    .legend .home { background: var(--purple); }
+
+    .leaflet-control-zoom a {
+      width: 48px !important;
+      height: 48px !important;
+      line-height: 48px !important;
+      color: var(--blue-dark) !important;
+    }
+
+    .leaflet-control-zoom { border-radius: 12px !important; overflow: hidden; }
+    .leaflet-container { font-family: inherit; }
+    .leaflet-control-attribution { font-size: 10px; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgb(10 27 51 / 65%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overscroll-behavior: contain;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 21px;
+      width: min(700px, 100%);
+      max-height: calc(100dvh - 40px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 22px 70px rgb(0 0 0 / 30%);
+      animation: modal-in .2s ease-out;
+    }
+
+    .modal.book-modal { width: min(970px, 100%); }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 20px 20px 13px;
+      border-bottom: 1px solid #e5ebf3;
+    }
+
+    .modal-header h2 { flex: 1; margin: 5px 0 0; font-size: 1.35rem; line-height: 1.3; }
+    .modal-close { padding: 0; font-size: 1.4rem; flex-shrink: 0; }
+    .modal-body { padding: 18px 22px; overflow-y: auto; overscroll-behavior: contain; }
+    .modal-body > :first-child { margin-top: 0; }
+    .modal-body > :last-child { margin-bottom: 0; }
+    .modal-body li + li { margin-top: 9px; }
+    .modal-body ol, .modal-body ul { padding-left: 23px; }
+
+    .modal-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      justify-content: flex-end;
+      padding: 15px 20px 20px;
+      border-top: 1px solid #e5ebf3;
+    }
+
+    .callout {
+      margin: 14px 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      background: var(--blue-light);
+    }
+
+    .callout.green { background: var(--green-light); border-color: var(--green); }
+    .callout.orange { background: #fff4dd; border-color: var(--orange); }
+    .callout.purple { background: var(--purple-light); border-color: var(--purple); }
+    .small { font-size: .85rem; color: var(--muted); }
+
+    .password-input {
+      width: 100%;
+      min-height: 52px;
+      border: 2px solid #b9cbe4;
+      border-radius: 10px;
+      margin: 9px 0;
+      padding: 10px 13px;
+      font-size: 1.2rem;
+    }
+
+    /* Blätterbares Lernbuch: immer genau ein Begriff pro Seite. */
+    .book-modal .modal-body {
+      background: #e9e5de;
+      padding: 20px;
+    }
+
+    .book-page {
+      position: relative;
+      min-height: 405px;
+      padding: 28px 28px 25px 38px;
+      border: 1px solid #e1d8c9;
+      border-radius: 5px 16px 16px 5px;
+      background:
+        linear-gradient(90deg, #e7dece 0, #f8f4eb 12px, #fffdf7 28px, #fffdf7 100%);
+      box-shadow: 4px 5px 0 #e7dfd2, 8px 10px 0 #d8cfc1, 0 10px 20px rgb(44 36 24 / 10%);
+      animation: page-in .22s ease-out;
+    }
+
+    .book-eyebrow {
+      color: #827055;
+      font-size: .76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+
+    .book-page h3 {
+      margin: 6px 0 18px;
+      color: var(--blue-dark);
+      font-size: clamp(1.55rem, 3vw, 2rem);
+      line-height: 1.2;
+    }
+
+    .book-content {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .book-explanation p:first-child { margin-top: 0; }
+    .book-example { margin: 0; }
+
+    .book-example svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid #e0e6ed;
+      border-radius: 14px;
+      background: #f5f9fd;
+    }
+
+    .book-example figcaption {
+      margin-top: 9px;
+      font-size: .83rem;
+      color: var(--muted);
+    }
+
+    .book-think {
+      margin-top: 20px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #fff0cb;
+      font-size: .92rem;
+    }
+
+    .book-page-number {
+      text-align: right;
+      color: #8d7b62;
+      font-size: .8rem;
+      margin-top: 15px;
+    }
+
+    .book-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 25px;
+    }
+
+    .book-nav button { min-width: 125px; }
+    .book-position { text-align: center; font-size: .88rem; font-weight: 700; color: #5b5145; }
+    .book-dots { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
+    .book-dots span { width: 8px; height: 8px; border-radius: 50%; background: #bdb5a8; }
+    .book-dots span.active { background: var(--blue); }
+
+    .pdf-status {
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--blue-light);
+      margin-top: 15px;
+    }
+
+    .load-error { padding: 150px 25px 25px; background: #fff3dc; height: 100%; }
+
+    @keyframes marker-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgb(237 138 18 / 40%), 0 2px 7px rgb(0 0 0 / 25%); }
+      60% { box-shadow: 0 0 0 12px rgb(237 138 18 / 0%), 0 2px 7px rgb(0 0 0 / 25%); }
+    }
+
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(12px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes banner-in {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes page-in {
+      from { opacity: .4; transform: translateX(7px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (max-width: 819px) {
+      .site-header { padding: 16px; align-items: flex-start; flex-direction: column; gap: 12px; }
+      .counter { padding: 6px 12px; font-size: .9rem; }
+      .workspace { flex-direction: column; padding: 12px; gap: 12px; }
+      .map-panel { flex: none; width: 100%; height: 65dvh; min-height: 560px; }
+      .sidebar { width: 100%; flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .sidebar .panel { margin: 0; }
+      .sidebar details { grid-column: 1 / -1; }
+      .task-banner { width: calc(100% - 145px); padding: 10px; }
+      .task-icon { display: none; }
+      .task-copy strong { font-size: .87rem; }
+      .task-copy p { font-size: .76rem; }
+      .success-banner { margin: 12px 12px 0; font-size: .9rem; }
+    }
+
+    @media (max-width: 650px) {
+      .book-content { grid-template-columns: 1fr; gap: 12px; }
+      .book-page { min-height: 0; padding: 20px 16px 18px 25px; }
+      .book-example { max-width: 400px; width: 100%; margin: auto; }
+      .book-nav { gap: 7px; }
+      .book-nav button { min-width: 48px; padding: 11px; }
+      .book-position { font-size: .8rem; }
+    }
+
+    @media (max-width: 540px) {
+      .sidebar { display: block; }
+      .sidebar .panel { margin-bottom: 12px; }
+      .modal-overlay { padding: 10px; }
+      .modal { max-height: calc(100dvh - 20px); border-radius: 16px; }
+      .modal-header { padding: 14px; }
+      .modal-header h2 { font-size: 1.17rem; }
+      .modal-body { padding: 16px; }
+      .modal-footer { padding: 12px 14px 16px; }
+      .modal-footer button { flex: 1 1 150px; }
+      .task-banner { left: 72px; right: 12px; width: auto; transform: none; }
+      .legend { font-size: 11px; padding: 8px 10px; }
+      .book-modal .modal-body { padding: 13px 16px 20px 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; }
+    }
+
+    @media print {
+      .sidebar, .task-banner, .success-banner, .modal-overlay,
+      .page-note, .tile-warning, .leaflet-control-zoom { display: none !important; }
+      .workspace { display: block; padding: 0; }
+      .map-panel { width: 100%; height: 150mm; min-height: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div>
+      <h1>🗺️ Graphen in der Navigation</h1>
+      <p class="subtitle">Dein digitales Arbeitsblatt · Mathematik &amp; Informatik · Klasse 8–10</p>
+    </div>
+
+    <div class="counters" aria-label="Größe deines Graphen" aria-live="polite">
+      <div class="counter">Knoten: <strong id="node-count">0</strong></div>
+      <div class="counter">Kanten: <strong id="edge-count">0</strong></div>
+    </div>
+  </header>
+
+  <div id="success-banner" class="success-banner" role="status" hidden=""></div>
+
+  <main class="workspace">
+    <section class="map-panel" aria-label="Interaktive Karte und dein Graph">
+      <div id="map" tabindex="0" aria-label="Karte: Orte finden, Knoten setzen und verbinden"></div>
+
+      <div class="task-banner">
+        <span class="task-icon" id="task-icon" aria-hidden="true">📍</span>
+        <div class="task-copy">
+          <strong id="task-title">1 · Orte finden &amp; Marker setzen</strong>
+          <p id="task-short">Ziehe 🏫 und 🛒 auf die richtigen Gebäude.</p>
+        </div>
+        <button id="task-help" aria-label="Aktuelle Aufgabenstellung öffnen">?</button>
+      </div>
+
+      <div id="tile-warning" class="tile-warning" role="status" hidden="">
+        Einige Kartenkacheln konnten nicht geladen werden.
+        Prüfe deine Internetverbindung. Dein Graph bleibt erhalten.
+      </div>
+    </section>
+
+    <aside class="sidebar" aria-label="Aufgaben und Werkzeuge">
+      <section class="panel">
+        <h2>🧭 Dein Lernweg</h2>
+        <ol class="stepper" id="stepper"></ol>
+        <p id="progress-note" class="progress-note" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h2>🧰 Werkzeuge</h2>
+        <div class="tools">
+          <button id="tool-node" disabled="" aria-pressed="false">📍 Knoten setzen</button>
+          <button id="tool-edge" disabled="" aria-pressed="false">🔗 Kante ziehen</button>
+          <button id="tool-undo" disabled="">↩️ Rückgängig</button>
+          <button id="tool-reset" class="danger" disabled="">🗑️ Zurücksetzen</button>
+          <button id="tool-check" class="wide check-button" disabled="">🔍 Pfad prüfen</button>
+          <button id="tool-home" class="wide bonus" hidden="">🏠 Zuhause-Marker hinzufügen</button>
+          <button id="tool-fit" class="wide" disabled="">↔️ Schule &amp; EDEKA zeigen</button>
+          <button id="tool-glossary" class="wide" disabled="">📖 Glossar-Buch öffnen</button>
+          <button id="tool-pdf" class="wide" disabled="">📄 Als PDF exportieren</button>
+        </div>
+
+        <div class="hint" id="tool-hint" role="status">
+          Beginne mit den beiden Ortsmarkern. Danach werden die Zeichenwerkzeuge freigeschaltet.
+        </div>
+      </section>
+
+      <details class="panel">
+        <summary>💡 Tipps &amp; Navi-Wissen</summary>
+        <div class="tips-content">
+          <p id="task-tip"></p>
+          <ul>
+            <li>Ein Knoten steht zum Beispiel für eine Kreuzung oder ein Ziel.</li>
+            <li>Eine Kante verbindet zwei Knoten.</li>
+            <li>Sich kreuzende Linien sind <strong>nicht automatisch verbunden</strong>.</li>
+            <li>Zum Verschieben der Karte ein aktives Zeichenwerkzeug erneut antippen.</li>
+            <li>Setze mehrere Knoten entlang einer Kurve, damit dein Weg der Straße folgt.</li>
+          </ul>
+          <p>
+            <strong>Unser Lernmodell:</strong> Alle Verbindungen sind in beide Richtungen nutzbar.
+            Echte Straßen, Einbahnstraßen und die Begehbarkeit werden nicht automatisch geprüft.
+          </p>
+        </div>
+      </details>
+    </aside>
+  </main>
+
+  <p class="page-note">
+    Dein Graph bleibt nur in dieser geöffneten Seite; beim Neuladen geht er verloren.
+    Sichere deine Lösung über den PDF-Export.
+    Keine Anmeldung, kein Backend. Internetzugriffe nur für Leaflet und OpenStreetMap-Kacheln.
+    Dies ist ein Lernmodell, keine echte Wegweisung.
+  </p>
+
+  <div id="modal-overlay" class="modal-overlay" hidden="">
+    <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+      <header class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" class="modal-close" aria-label="Dialog schließen">×</button>
+      </header>
+      <div id="modal-body" class="modal-body"></div>
+      <footer id="modal-footer" class="modal-footer"></footer>
+    </section>
+  </div>
+
+  <noscript>
+    <p style="padding:20px;background:#fff1cf">
+      Bitte aktiviere JavaScript, damit Karte, Werkzeuge und Aufgabenprüfung funktionieren.
+    </p>
+  </noscript>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const $ = id => document.getElementById(id);
+
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[char]));
+
+    if (!window.L) {
+      $("map").innerHTML = `
+        <div class="load-error" role="alert">
+          <h2>Die Kartenbibliothek konnte nicht geladen werden.</h2>
+          <p>Prüfe deine Internetverbindung und lade die Seite anschließend neu.</p>
+        </div>`;
+      $("task-short").textContent = "Bitte Internetverbindung prüfen und Seite neu laden.";
+      $("task-help").disabled = true;
+      return;
+    }
+
+    const COLORS = {
+      blue: "#175cba",
+      green: "#168044",
+      red: "#d52b39",
+      purple: "#8541b2",
+      orange: "#ed8a12",
+      ink: "#203047"
+    };
+
+    const LOCATIONS = {
+      school: {
+        coords: [48.6943403, 9.6723472],
+        name: "Hermann-Hesse-Realschule",
+        short: "Schule · START",
+        emoji: "🏫"
+      },
+      store: {
+        coords: [48.6950399, 9.6670767],
+        name: "EDEKA Gebauer, Dieselstraße",
+        short: "EDEKA · ZIEL",
+        emoji: "🛒"
+      }
+    };
+
+    const TASKS = [
+      {
+        icon: "📍",
+        title: "Orte finden & Marker setzen",
+        short: "Ziehe 🏫 und 🛒 auf die richtigen Gebäude.",
+        tip: "Zoome in die Karte. Ziehe die Mitte jedes Emoji-Markers auf das gesuchte Gebäude. In höchstens 60 m Entfernung rastet er ein."
+      },
+      {
+        icon: "🛣️",
+        title: "Lieblingsroute einzeichnen",
+        short: "Verbinde Schule und EDEKA über deinen bevorzugten Fußweg.",
+        tip: "Setze Knoten an Abbiegungen und Kreuzungen. Verbinde immer zwei Knoten. Auch Start und Ziel müssen angeschlossen sein."
+      },
+      {
+        icon: "🚧",
+        title: "Baustelle! Finde eine Umleitung",
+        short: "Umgehe die rote Sperrung mit mindestens zwei neuen Kanten.",
+        tip: "Verlasse die alte Route vor der Baustelle und kehre erst dahinter zurück. Verwende mindestens zwei Kanten außerhalb der gespeicherten ersten Route."
+      },
+      {
+        icon: "📝",
+        title: "Arbeitsblatt: Fachbegriffe anwenden",
+        short: "Arbeitsblatt abholen, Fachbegriffe erklären und abhaken.",
+        tip: "Im Glossar-Buch kannst du die Begriffe einzeln nachlesen. Auf jeder Seite findest du auch ein Bildbeispiel."
+      },
+      {
+        icon: "⭐",
+        title: "Routen zu dir nach Hause",
+        short: "Baue zwei verschiedene Wege von der Schule zu 🏠.",
+        tip: "Die Routen dürfen gemeinsame Abschnitte haben, müssen sich aber unterscheiden. Nutze gern einen erfundenen oder ungefähren Zuhause-Ort."
+      }
+    ];
+
+    function uid(prefix) {
+      if (window.crypto?.randomUUID) {
+        return prefix + "-" + window.crypto.randomUUID();
+      }
+      if (window.crypto?.getRandomValues) {
+        const values = new Uint32Array(4);
+        window.crypto.getRandomValues(values);
+        return prefix + "-" + Array.from(values, n => n.toString(16)).join("-");
+      }
+      return prefix + "-" + Date.now().toString(36) + "-" +
+        Math.random().toString(36).slice(2) + "-" + Math.random().toString(36).slice(2);
+    }
+
+    const START_ID = uid("node");
+    const GOAL_ID = uid("node");
+
+    const nodes = new Map();
+    const edges = new Map();
+    const history = [];
+
+    const state = {
+      task: 0,
+      completed: Array(5).fill(null),
+      route1: [],
+      blockedEdgeId: null,
+      labelCounter: 0,
+      mode: "pan",
+      selectedNodeId: null
+    };
+
+    let analysisCache = null;
+    let updating = false;
+    let lastDragTime = -Infinity;
+
+    let modalReturnFocus = null;
+    let modalOnClose = null;
+    let modalKind = "";
+    let savedBodyOverflow = "";
+
+    let bookPage = 0;
+    let bookReturnTask = null;
+
+    let pdfBusy = false;
+    let pdfURL = null;
+    let mapMoving = false;
+
+    const map = L.map("map", {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: false,
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
+      attributionControl: true
+    });
+
+    /*
+      Die bereits geladenen Kacheln werden auch für den lokalen PDF-Export
+      verwendet. Dafür muss das Cross-Origin-Attribut vor dem Laden gesetzt sein.
+
+      Verwendete Leaflet-Schnittstellen:
+      https://leafletjs.com/reference.html
+    */
+    const loadedTiles = new Map();
+    const tileKey = coords => `${coords.z}/${coords.x}/${coords.y}`;
+
+    const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      minZoom: 2,
+      maxZoom: 19,
+      tileSize: 256,
+      noWrap: true,
+      crossOrigin: "anonymous",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    });
+
+    tileLayer.on("tileload", event => {
+      loadedTiles.set(tileKey(event.coords), {
+        image: event.tile,
+        coords: { x: event.coords.x, y: event.coords.y, z: event.coords.z }
+      });
+    });
+
+    tileLayer.on("tileunload", event => {
+      const key = tileKey(event.coords);
+      if (loadedTiles.get(key)?.image === event.tile) {
+        loadedTiles.delete(key);
+      }
+    });
+
+    tileLayer.on("tileerror", () => {
+      $("tile-warning").hidden = false;
+    });
+
+    tileLayer.addTo(map);
+
+    map.attributionControl.setPrefix(
+      '<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>'
+    );
+
+    map.on("movestart", () => { mapMoving = true; });
+    map.on("moveend", () => { mapMoving = false; });
+
+    const edgeLayer = L.layerGroup().addTo(map);
+    const nodeLayer = L.layerGroup().addTo(map);
+
+    const legend = L.control({ position: "bottomleft" });
+
+    legend.onAdd = () => {
+      const div = L.DomUtil.create("div", "legend");
+      div.innerHTML = `
+        <strong>Dein Graph auf der Karte</strong>
+        <div class="legend-row"><span class="legend-dot school"></span>🏫 Schule / Start</div>
+        <div class="legend-row"><span class="legend-dot store"></span>🛒 EDEKA / Ziel</div>
+        <div class="legend-row"><span class="legend-dot custom"></span>Eigene Knoten</div>
+        <div class="legend-row"><span class="legend-line"></span>Baustelle / gesperrt</div>
+        <div class="legend-row"><span class="legend-dot home"></span>🏠 Zuhause</div>
+        <div class="legend-row"><span class="legend-path"></span>Gefundener Pfad</div>`;
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
+      return div;
+    };
+
+    legend.addTo(map);
+
+    function invalidateAnalysis() {
+      analysisCache = null;
+    }
+
+    function isReady() {
+      return Boolean(nodes.get(START_ID)?.placed && nodes.get(GOAL_ID)?.placed);
+    }
+
+    function homeNode() {
+      return Array.from(nodes.values()).find(node => node.kind === "home") || null;
+    }
+
+    function nodeTitle(node) {
+      if (node.kind === "school" || node.kind === "store") {
+        return LOCATIONS[node.kind].name +
+          (node.placed ? " – fest eingerastet" : " – zum Gebäude ziehen");
+      }
+      if (node.kind === "home") return "Zuhause – verschiebbarer Knoten";
+      return node.label + " – verschiebbarer Knoten";
+    }
+
+    function makeIcon(node) {
+      const classes = [
+        "graph-dot",
+        node.kind,
+        node.placed ? "" : "unplaced",
+        state.selectedNodeId === node.id ? "selected" : ""
+      ].filter(Boolean).join(" ");
+
+      const placeLabel = node.kind === "school" || node.kind === "store"
+        ? `<span class="place-label">${escapeHTML(LOCATIONS[node.kind].short)}${node.placed ? " ✓" : " · ziehen"}</span>`
+        : node.kind === "home"
+          ? '<span class="place-label">Zuhause</span>'
+          : "";
+
+      return L.divIcon({
+        className: "graph-marker",
+        html: `<span class="${classes}">${escapeHTML(node.label)}</span>${placeLabel}`,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24]
+      });
+    }
+
+    function setMarkerAccessibility(node) {
+      const element = node.marker.getElement();
+      if (!element) return;
+      element.setAttribute("aria-label", nodeTitle(node));
+      element.setAttribute("title", nodeTitle(node));
+      element.setAttribute("role", "button");
+    }
+
+    function repaintNode(node) {
+      node.marker.setIcon(makeIcon(node));
+      setMarkerAccessibility(node);
+    }
+
+    function clearSelection() {
+      const oldNode = nodes.get(state.selectedNodeId);
+      state.selectedNodeId = null;
+      if (oldNode) repaintNode(oldNode);
+    }
+
+    function createNode(data) {
+      const node = {
+        id: data.id,
+        label: data.label,
+        kind: data.kind,
+        placed: data.placed,
+        marker: null
+      };
+
+      const fixed = (node.kind === "school" || node.kind === "store") && node.placed;
+
+      node.marker = L.marker([data.lat, data.lng], {
+        icon: makeIcon(node),
+        draggable: !fixed,
+        keyboard: true,
+        autoPan: true,
+        bubblingMouseEvents: false,
+        title: nodeTitle(node),
+        alt: nodeTitle(node)
+      });
+
+      nodes.set(node.id, node);
+      node.marker.addTo(nodeLayer);
+      setMarkerAccessibility(node);
+
+      let dragSnapshot = null;
+      let dragStartPosition = null;
+
+      node.marker.on("click", event => {
+        if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
+        if (performance.now() - lastDragTime < 250) return;
+        onNodeClick(node);
+      });
+
+      node.marker.on("dragstart", () => {
+        clearSelection();
+        dragStartPosition = node.marker.getLatLng();
+        dragSnapshot = node.placed ? takeSnapshot() : null;
+      });
+
+      node.marker.on("drag", () => {
+        updateGraph({ automatic: false });
+      });
+
+      node.marker.on("dragend", () => {
+        lastDragTime = performance.now();
+
+        if (!node.placed && (node.kind === "school" || node.kind === "store")) {
+          tryPlaceLocation(node);
+          return;
+        }
+
+        const position = node.marker.getLatLng();
+        if (dragSnapshot && dragStartPosition && !position.equals(dragStartPosition)) {
+          history.push({ snapshot: dragSnapshot, label: node.label + " verschoben" });
+        }
+
+        dragSnapshot = null;
+        updateGraph();
+      });
+
+      invalidateAnalysis();
+      return node;
+    }
+
+    function createEdge(data) {
+      const a = nodes.get(data.a);
+      const b = nodes.get(data.b);
+      if (!a || !b) return null;
+
+      const edge = {
+        id: data.id,
+        a: data.a,
+        b: data.b,
+        line: L.polyline(
+          [a.marker.getLatLng(), b.marker.getLatLng()],
+          {
+            color: COLORS.blue,
+            weight: 5,
+            opacity: .9,
+            interactive: false,
+            lineCap: "round"
+          }
+        ).addTo(edgeLayer)
+      };
+
+      edges.set(edge.id, edge);
+      invalidateAnalysis();
+      return edge;
+    }
+
+    function tryPlaceLocation(node) {
+      const target = L.latLng(LOCATIONS[node.kind].coords);
+      const distance = node.marker.getLatLng().distanceTo(target);
+
+      if (distance <= 60) {
+        node.marker.setLatLng(target);
+        node.placed = true;
+        node.marker.dragging.disable();
+        repaintNode(node);
+        invalidateAnalysis();
+        updateGraph();
+
+        if (!isReady()) {
+          showModal(
+            "✅ Dieser Ort stimmt!",
+            `<p><strong>${escapeHTML(LOCATIONS[node.kind].name)}</strong> ist richtig platziert.</p>
+             <div class="callout green">
+               Der Marker ist jetzt ein fester <strong>Knoten</strong> deines Graphen.
+             </div>
+             <p>Ziehe nun noch den anderen Marker auf das passende Gebäude.</p>`,
+            [{ text: "Weiter zum zweiten Ort", className: "primary", action: closeModal }]
+          );
+        }
+      } else {
+        updateGraph({ automatic: false });
+
+        showModal(
+          "📍 Noch ein kleines Stück!",
+          `<p>Der Marker für <strong>${escapeHTML(LOCATIONS[node.kind].name)}</strong>
+             ist noch ungefähr <strong>${Math.round(distance)} m</strong> vom Zielpunkt entfernt.</p>
+           <div class="callout orange">
+             Er rastet erst in höchstens <strong>60 m Entfernung</strong> ein.
+           </div>
+           <p>Zoome näher heran und ziehe den Marker weiter.</p>`,
+          [{ text: "Okay, ich suche weiter", className: "primary", action: closeModal }]
+        );
+      }
+    }
+
+    function onNodeClick(node) {
+      if (!node.placed) {
+        setHint("Ziehe diesen Emoji-Marker auf das richtige Gebäude. Ein Tipp allein platziert ihn noch nicht.");
+        return;
+      }
+
+      if (!isReady()) {
+        setHint("Platziere zuerst auch den zweiten Ortsmarker.");
+        return;
+      }
+
+      if (state.mode !== "edge") {
+        setHint(`${node.label}: Das ist ein Knoten. Wähle „🔗 Kante ziehen“, um ihn zu verbinden.`);
+        return;
+      }
+
+      if (!state.selectedNodeId) {
+        state.selectedNodeId = node.id;
+        repaintNode(node);
+        renderHint();
+        return;
+      }
+
+      const firstId = state.selectedNodeId;
+
+      if (firstId === node.id) {
+        clearSelection();
+        setHint("Auswahl aufgehoben. Verbinde immer zwei verschiedene Knoten.");
+        return;
+      }
+
+      const duplicate = Array.from(edges.values()).find(edge =>
+        (edge.a === firstId && edge.b === node.id) ||
+        (edge.b === firstId && edge.a === node.id)
+      );
+
+      if (duplicate) {
+        setHint(duplicate.id === state.blockedEdgeId
+          ? "Diese Verbindung ist gesperrt. Eine zweite Kante darüber wäre keine Umleitung. Setze neue Zwischenknoten."
+          : "Diese beiden Knoten sind bereits verbunden. Doppelte Verbindungen sind hier nicht erlaubt.");
+        return;
+      }
+
+      remember("Kante hinzugefügt");
+      createEdge({ id: uid("edge"), a: firstId, b: node.id });
+      clearSelection();
+      updateGraph();
+    }
+
+    function addCustomNode(latlng) {
+      remember("Knoten hinzugefügt");
+      state.labelCounter += 1;
+
+      createNode({
+        id: uid("node"),
+        label: "K" + state.labelCounter,
+        kind: "custom",
+        placed: true,
+        lat: latlng.lat,
+        lng: latlng.lng
+      });
+
+      updateGraph();
+    }
+
+    map.on("click", event => {
+      if (!$("modal-overlay").hidden || performance.now() - lastDragTime < 250) return;
+
+      if (!isReady()) {
+        setHint("Ziehe zuerst die beiden pulsierenden Ortsmarker auf die passenden Gebäude.");
+        return;
+      }
+
+      if (state.mode === "node") {
+        addCustomNode(event.latlng);
+      } else if (state.mode === "edge") {
+        clearSelection();
+        renderHint();
+      }
+    });
+
+    function setMode(mode) {
+      if (!isReady()) return;
+      clearSelection();
+      state.mode = state.mode === mode ? "pan" : mode;
+      renderTools();
+      renderHint();
+    }
+
+    /* Interne Wegprüfung. Im Arbeitsblatt werden keine Suchverfahren erklärt. */
+
+    function buildAdjacency(excludedEdgeId = null) {
+      const adjacency = new Map();
+
+      for (const node of nodes.values()) {
+        if (node.placed) adjacency.set(node.id, []);
+      }
+
+      for (const edge of edges.values()) {
+        if (edge.id === excludedEdgeId) continue;
+        if (!adjacency.has(edge.a) || !adjacency.has(edge.b)) continue;
+
+        adjacency.get(edge.a).push({ to: edge.b, edgeId: edge.id });
+        adjacency.get(edge.b).push({ to: edge.a, edgeId: edge.id });
+      }
+
+      return adjacency;
+    }
+
+    function findPath(startId, targetId, excludedEdgeId = null, additionalExcludedEdgeId = null) {
+      const adjacency = buildAdjacency(excludedEdgeId);
+      if (!adjacency.has(startId) || !adjacency.has(targetId)) return null;
+
+      const queue = [startId];
+      const previous = new Map([[startId, null]]);
+      let head = 0;
+
+      while (head < queue.length) {
+        const current = queue[head++];
+        if (current === targetId) break;
+
+        for (const connection of adjacency.get(current)) {
+          if (connection.edgeId === additionalExcludedEdgeId) continue;
+          if (previous.has(connection.to)) continue;
+
+          previous.set(connection.to, {
+            nodeId: current,
+            edgeId: connection.edgeId
+          });
+          queue.push(connection.to);
+        }
+      }
+
+      if (!previous.has(targetId)) return null;
+
+      const pathNodes = [targetId];
+      const pathEdges = [];
+      let current = targetId;
+
+      while (current !== startId) {
+        const link = previous.get(current);
+        pathEdges.push(link.edgeId);
+        current = link.nodeId;
+        pathNodes.push(current);
+      }
+
+      return {
+        nodes: pathNodes.reverse(),
+        edges: pathEdges.reverse()
+      };
+    }
+
+    function countNewEdges(path) {
+      if (!path) return 0;
+      const originalEdges = new Set(state.route1);
+      return path.edges.filter(id => !originalEdges.has(id)).length;
+    }
+
+    /*
+      Die erste gefundene Verbindung muss nicht die gesuchte Umleitung sein.
+      Deshalb werden bei Bedarf weitere einfache Pfade geprüft.
+      Sackgassen-Abstecher und wiederholte Knoten zählen nicht als Umleitung.
+    */
+    function findDetour(firstPath) {
+      if (!firstPath) return { path: null, best: null, newCount: 0 };
+
+      let best = firstPath;
+      let bestCount = countNewEdges(firstPath);
+
+      if (bestCount >= 2) {
+        return { path: firstPath, best, newCount: bestCount };
+      }
+
+      const adjacency = buildAdjacency(state.blockedEdgeId);
+      const originalEdges = new Set(state.route1);
+
+      const availableNewEdges = Array.from(edges.values()).filter(edge =>
+        edge.id !== state.blockedEdgeId && !originalEdges.has(edge.id)
+      );
+
+      if (availableNewEdges.length < 2) {
+        return { path: null, best, newCount: bestCount };
+      }
+
+      function canStillQualify(frame) {
+        const reachable = new Set([frame.vertex]);
+        const queue = [frame.vertex];
+        const possibleNew = new Set();
+
+        for (let head = 0; head < queue.length; head++) {
+          const vertex = queue[head];
+
+          for (const connection of adjacency.get(vertex) || []) {
+            if (frame.seen.has(connection.to) && connection.to !== frame.vertex) continue;
+
+            if (!originalEdges.has(connection.edgeId)) possibleNew.add(connection.edgeId);
+
+            if (!reachable.has(connection.to)) {
+              reachable.add(connection.to);
+              queue.push(connection.to);
+            }
+          }
+        }
+
+        return reachable.has(GOAL_ID) &&
+          frame.newCount + possibleNew.size >= 2;
+      }
+
+      const stack = [{
+        vertex: START_ID,
+        pathNodes: [START_ID],
+        pathEdges: [],
+        seen: new Set([START_ID]),
+        newCount: 0
+      }];
+
+      while (stack.length) {
+        const frame = stack.pop();
+
+        if (frame.vertex === GOAL_ID) {
+          const path = { nodes: frame.pathNodes, edges: frame.pathEdges };
+
+          if (frame.newCount > bestCount) {
+            best = path;
+            bestCount = frame.newCount;
+          }
+
+          if (frame.newCount >= 2) {
+            return { path, best: path, newCount: frame.newCount };
+          }
+          continue;
+        }
+
+        if (!canStillQualify(frame)) continue;
+
+        const connections = (adjacency.get(frame.vertex) || []).slice().sort((a, b) =>
+          Number(!originalEdges.has(a.edgeId)) - Number(!originalEdges.has(b.edgeId))
+        );
+
+        for (const connection of connections) {
+          if (frame.seen.has(connection.to)) continue;
+
+          const seen = new Set(frame.seen);
+          seen.add(connection.to);
+
+          stack.push({
+            vertex: connection.to,
+            pathNodes: [...frame.pathNodes, connection.to],
+            pathEdges: [...frame.pathEdges, connection.edgeId],
+            seen,
+            newCount: frame.newCount + Number(!originalEdges.has(connection.edgeId))
+          });
+        }
+      }
+
+      return { path: null, best, newCount: bestCount };
+    }
+
+    function findTwoHomePaths() {
+      const home = homeNode();
+      if (!home) return [];
+
+      const first = findPath(START_ID, home.id, state.blockedEdgeId);
+      if (!first) return [];
+
+      for (const edgeId of first.edges) {
+        const second = findPath(START_ID, home.id, state.blockedEdgeId, edgeId);
+        if (second) return [first, second];
+      }
+
+      return [first];
+    }
+
+    function analyzeGraph() {
+      if (analysisCache) return analysisCache;
+
+      const schoolPath = findPath(START_ID, GOAL_ID, state.blockedEdgeId);
+      const detour = state.task >= 2 && state.blockedEdgeId
+        ? findDetour(schoolPath)
+        : { path: null, best: schoolPath, newCount: countNewEdges(schoolPath) };
+
+      analysisCache = {
+        schoolPath,
+        detour,
+        homePaths: homeNode() ? findTwoHomePaths() : []
+      };
+
+      return analysisCache;
+    }
+
+    function initializeConstruction() {
+      if (!state.route1.length) {
+        const currentPath = findPath(START_ID, GOAL_ID);
+        if (currentPath) state.route1 = currentPath.edges.slice();
+      }
+
+      const availableRouteEdges = state.route1.filter(id => edges.has(id));
+
+      state.blockedEdgeId = availableRouteEdges.length
+        ? availableRouteEdges[Math.floor(availableRouteEdges.length / 2)]
+        : edges.keys().next().value || null;
+
+      invalidateAnalysis();
+    }
+
+    function advanceState(status = "done") {
+      const previousTask = state.task;
+      if (previousTask > 4) return;
+
+      if (previousTask === 1) {
+        const path = findPath(START_ID, GOAL_ID);
+        state.route1 = path ? path.edges.slice() : [];
+      }
+
+      state.completed[previousTask] = status;
+      state.task = previousTask + 1;
+      clearSelection();
+      state.mode = state.task === 1 || state.task === 2 ? "node" : "pan";
+
+      if (state.task === 2) initializeConstruction();
+      invalidateAnalysis();
+    }
+
+    function updateGraph({ automatic = true } = {}) {
+      if (updating) return;
+      updating = true;
+      let completedNow = null;
+
+      try {
+        for (const edge of edges.values()) {
+          edge.line.setLatLngs([
+            nodes.get(edge.a).marker.getLatLng(),
+            nodes.get(edge.b).marker.getLatLng()
+          ]);
+        }
+
+        if (state.task === 2 && !state.blockedEdgeId && edges.size) {
+          initializeConstruction();
+        }
+
+        let result = analyzeGraph();
+
+        if (automatic) {
+          const success =
+            (state.task === 0 && isReady()) ||
+            (state.task === 1 && Boolean(result.schoolPath)) ||
+            (state.task === 2 && Boolean(state.blockedEdgeId && result.detour.path));
+
+          if (success) {
+            completedNow = state.task;
+            advanceState("done");
+            result = analyzeGraph();
+          }
+        }
+
+        renderEdges(result);
+        renderCounters();
+        renderStepper();
+        renderTaskBanner();
+        renderTools();
+        renderHint();
+        renderProgress(result);
+        renderSuccess(result);
+      } finally {
+        updating = false;
+      }
+
+      if (completedNow !== null) openTask(state.task, completedNow);
+    }
+
+    function highlightedEdges(result) {
+      const highlighted = new Set();
+
+      if (state.task >= 4 && result.homePaths.length) {
+        for (const path of result.homePaths) {
+          path.edges.forEach(id => highlighted.add(id));
+        }
+      } else {
+        const path = state.task >= 2
+          ? result.detour.path || result.schoolPath
+          : result.schoolPath;
+
+        if (path) path.edges.forEach(id => highlighted.add(id));
+      }
+
+      return highlighted;
+    }
+
+    function renderEdges(result) {
+      const highlighted = highlightedEdges(result);
+
+      for (const edge of edges.values()) {
+        edge.line.setStyle({
+          color: COLORS.blue,
+          weight: 5,
+          dashArray: null,
+          opacity: .9
+        });
+      }
+
+      for (const id of highlighted) {
+        const edge = edges.get(id);
+        if (!edge || id === state.blockedEdgeId) continue;
+
+        edge.line.setStyle({
+          color: COLORS.green,
+          weight: 7,
+          dashArray: null,
+          opacity: 1
+        });
+        edge.line.bringToFront();
+      }
+
+      const blocked = edges.get(state.blockedEdgeId);
+      if (blocked) {
+        blocked.line.setStyle({
+          color: COLORS.red,
+          weight: 6,
+          dashArray: "11 9",
+          opacity: 1
+        });
+        blocked.line.bringToFront();
+      }
+    }
+
+    function placedNodeCount() {
+      return Array.from(nodes.values()).filter(node => node.placed).length;
+    }
+
+    function renderCounters() {
+      $("node-count").textContent = String(placedNodeCount());
+      $("edge-count").textContent = String(edges.size);
+    }
+
+    const stepButtons = TASKS.map((task, index) => {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "step";
+      button.innerHTML = `
+        <span class="step-state" aria-hidden="true"></span>
+        <span class="step-label">
+          ${index === 4 ? "⭐" : index + 1 + "."} ${escapeHTML(task.title)}
+          <small></small>
+        </span>`;
+
+      button.addEventListener("click", () => openTask(index));
+      item.appendChild(button);
+      $("stepper").appendChild(item);
+      return button;
+    });
+
+    function renderStepper() {
+      stepButtons.forEach((button, index) => {
+        const complete = Boolean(state.completed[index]);
+        const current = state.task === index;
+
+        button.className = "step " +
+          (complete ? "complete" : current ? "current" : "locked");
+
+        button.querySelector(".step-state").textContent =
+          complete ? "✔" : current ? "▶" : "🔒";
+
+        button.querySelector("small").textContent = complete
+          ? state.completed[index] === "skipped"
+            ? "Von der Lehrkraft freigegeben"
+            : "Erledigt"
+          : current ? "Du bist hier" : "Wird später freigeschaltet";
+
+        if (current) button.setAttribute("aria-current", "step");
+        else button.removeAttribute("aria-current");
+
+        button.setAttribute(
+          "aria-label",
+          `${index === 4 ? "Sternchen-Aufgabe" : "Aufgabe " + (index + 1)}: ${TASKS[index].title}. ` +
+          (complete ? "Erledigt." : current ? "Aktuelle Aufgabe." : "Noch gesperrt.")
+        );
+      });
+    }
+
+    function renderTaskBanner() {
+      if (state.task >= TASKS.length) {
+        $("task-icon").textContent = "🏆";
+        $("task-title").textContent = "Alle Aufgaben erledigt";
+        $("task-short").textContent = "Exportiere deine Lösung als PDF oder erforsche weitere Routen.";
+        $("task-tip").textContent = "Welche Verbindungen sind unverzichtbar? Wo gibt es mehrere mögliche Wege?";
+        return;
+      }
+
+      const task = TASKS[state.task];
+      $("task-icon").textContent = task.icon;
+      $("task-title").textContent =
+        (state.task === 4 ? "⭐" : state.task + 1) + " · " + task.title;
+      $("task-short").textContent = task.short;
+      $("task-tip").textContent = task.tip;
+    }
+
+    function renderTools() {
+      const ready = isReady();
+
+      $("tool-node").disabled = !ready;
+      $("tool-edge").disabled = !ready;
+      $("tool-check").disabled = !ready;
+      $("tool-undo").disabled = history.length === 0;
+
+      for (const id of ["tool-reset", "tool-fit", "tool-glossary", "tool-pdf"]) {
+        $(id).disabled = false;
+      }
+
+      $("tool-node").classList.toggle("active", state.mode === "node");
+      $("tool-edge").classList.toggle("active", state.mode === "edge");
+      $("tool-node").setAttribute("aria-pressed", String(state.mode === "node"));
+      $("tool-edge").setAttribute("aria-pressed", String(state.mode === "edge"));
+
+      $("tool-home").hidden = state.task < 4;
+      $("tool-home").textContent = homeNode()
+        ? "🏠 Zuhause auf der Karte zeigen"
+        : "🏠 Zuhause-Marker hinzufügen";
+
+      $("tool-undo").title = history.length
+        ? "Rückgängig: " + history[history.length - 1].label
+        : "Noch keine eigene Änderung";
+
+      $("map").style.cursor = state.mode === "node" && ready ? "crosshair" : "";
+    }
+
+    function setHint(text) {
+      $("tool-hint").textContent = text;
+    }
+
+    function renderHint() {
+      if (!isReady()) {
+        const placed = Number(Boolean(nodes.get(START_ID)?.placed)) +
+          Number(Boolean(nodes.get(GOAL_ID)?.placed));
+
+        setHint(`${placed}/2 Orte eingerastet. Ziehe die pulsierenden Marker auf die richtigen Gebäude.`);
+        return;
+      }
+
+      if (state.selectedNodeId) {
+        const label = nodes.get(state.selectedNodeId)?.label || "Knoten";
+        setHint(`${label} ist orange markiert. Tippe auf einen anderen Knoten. Ein Tipp auf die freie Karte hebt die Auswahl auf.`);
+      } else if (state.mode === "node") {
+        setHint("Tippe auf die Karte, um einen Knoten zu setzen. Ein Knoten auf einer vorhandenen Linie teilt diese nicht automatisch.");
+      } else if (state.mode === "edge") {
+        setHint("Tippe zuerst auf den Anfangsknoten, dann auf den Endknoten. Auch Schule, EDEKA und Zuhause können verbunden werden.");
+      } else {
+        setHint("Karte verschieben und zoomen. Wähle ein Zeichenwerkzeug. Eigene Knoten und Zuhause kannst du verschieben.");
+      }
+    }
+
+    function renderProgress(result) {
+      let text;
+
+      if (state.task === 0) {
+        text = "Die Ortsmarker zählen erst nach dem Einrasten als Knoten.";
+      } else if (state.task === 1) {
+        text = "Deine Verbindung wird bei jeder Änderung automatisch geprüft.";
+      } else if (state.task === 2) {
+        text = !state.blockedEdgeId
+          ? "Noch keine Kante vorhanden: Deine erste Kante wird automatisch zur Baustelle."
+          : result.schoolPath
+            ? `Baustelle ausgeschlossen · abweichend: ${result.detour.newCount}/2 Kanten`
+            : "Baustelle aktiv · noch kein durchgehender Ersatzweg.";
+      } else if (state.task === 3) {
+        text = "Bestätige dein fertiges Arbeitsblatt im Aufgabenfenster mit „Erledigt ✔“.";
+      } else if (state.task === 4) {
+        text = `Schule → Zuhause: ${result.homePaths.length}/2 verschiedene Routen gefunden.`;
+      } else {
+        const skipped = state.completed.filter(value => value === "skipped").length;
+        text = skipped
+          ? `Abgeschlossen · ${skipped} Aufgabe(n) mit Lehrkraft-Freigabe.`
+          : "Alle fünf Aufgaben abgeschlossen. Gut gemacht!";
+      }
+
+      $("progress-note").textContent = text;
+    }
+
+    function renderSuccess(result) {
+      let message = "";
+
+      if (state.task >= 4 && result.homePaths.length) {
+        message = result.homePaths.length >= 2
+          ? "🎉 Zwei verschiedene Wege von der Schule nach Hause gefunden!"
+          : "🎉 Weg gefunden: Schule → Zuhause! Ergänze eine zweite Route.";
+      } else if (result.schoolPath) {
+        if (state.blockedEdgeId && result.detour.path) {
+          message = "🎉 Umleitung gefunden – dein Weg umfährt die Baustelle!";
+        } else if (state.task === 2) {
+          message = `🎉 Weg gefunden – erweitere die Umleitung noch: abweichend ${result.detour.newCount}/2 Kanten.`;
+        } else {
+          message = "🎉 Weg gefunden – Schule und EDEKA sind verbunden!";
+        }
+      }
+
+      $("success-banner").hidden = !message;
+      $("success-banner").textContent = message;
+    }
+
+    /* History speichert Graph, Baustelle und ausgelösten Aufgabenfortschritt. */
+
+    function takeSnapshot() {
+      return {
+        nodes: Array.from(nodes.values()).map(node => {
+          const position = node.marker.getLatLng();
+          return {
+            id: node.id,
+            kind: node.kind,
+            label: node.label,
+            placed: node.placed,
+            lat: position.lat,
+            lng: position.lng
+          };
+        }),
+        edges: Array.from(edges.values()).map(edge => ({
+          id: edge.id,
+          a: edge.a,
+          b: edge.b
+        })),
+        task: state.task,
+        completed: state.completed.slice(),
+        route1: state.route1.slice(),
+        blockedEdgeId: state.blockedEdgeId,
+        labelCounter: state.labelCounter,
+        mode: state.mode
+      };
+    }
+
+    function remember(label) {
+      history.push({ snapshot: takeSnapshot(), label });
+    }
+
+    function restoreSnapshot(snapshot) {
+      edgeLayer.clearLayers();
+      nodeLayer.clearLayers();
+      nodes.clear();
+      edges.clear();
+
+      state.task = snapshot.task;
+      state.completed = snapshot.completed.slice();
+      state.route1 = snapshot.route1.slice();
+      state.blockedEdgeId = snapshot.blockedEdgeId;
+      state.labelCounter = snapshot.labelCounter;
+      state.mode = snapshot.mode;
+      state.selectedNodeId = null;
+
+      snapshot.nodes.forEach(createNode);
+      snapshot.edges.forEach(createEdge);
+      invalidateAnalysis();
+    }
+
+    function undo() {
+      const entry = history.pop();
+      if (!entry) return;
+
+      const previousTask = state.task;
+      hideModal(false);
+      restoreSnapshot(entry.snapshot);
+      updateGraph({ automatic: false });
+
+      if (previousTask !== state.task) openTask(state.task);
+      else setHint("Rückgängig: " + entry.label + ".");
+    }
+
+    function askReset() {
+      showModal(
+        "🗑️ Deinen Schüler-Graphen zurücksetzen?",
+        `<p>Gelöscht werden:</p>
+         <ul>
+           <li>alle eigenen Knoten und Kanten sowie der Zuhause-Marker,</li>
+           <li>die gespeicherte erste Route und die Baustelle,</li>
+           <li>der Aufgabenfortschritt ab Aufgabe 2 und die Rückgängig-Historie.</li>
+         </ul>
+         <div class="callout green">
+           Die beiden Ortsmarker bleiben erhalten. Bereits platzierte Orte bleiben eingerastet.
+         </div>
+         <p><strong>Das Zurücksetzen lässt sich nicht rückgängig machen.</strong></p>`,
+        [
+          { text: "Abbrechen", action: closeModal },
+          { text: "Ja, Graph zurücksetzen", className: "danger", action: resetGraph }
+        ]
+      );
+    }
+
+    function resetGraph() {
+      hideModal(false);
+      clearSelection();
+
+      edgeLayer.clearLayers();
+      edges.clear();
+
+      for (const [id, node] of nodes) {
+        if (node.kind === "custom" || node.kind === "home") {
+          nodeLayer.removeLayer(node.marker);
+          nodes.delete(id);
+        }
+      }
+
+      state.route1 = [];
+      state.blockedEdgeId = null;
+      state.labelCounter = 0;
+      state.completed = Array(5).fill(null);
+      state.task = isReady() ? 1 : 0;
+      if (isReady()) state.completed[0] = "done";
+      state.mode = isReady() ? "node" : "pan";
+
+      history.length = 0;
+      invalidateAnalysis();
+      updateGraph({ automatic: false });
+      fitLocations();
+      openTask(state.task);
+    }
+
+    /* Selbstgebaute HTML-Dialoge. */
+
+    function showModal(title, html, buttons = [], options = {}) {
+      const overlay = $("modal-overlay");
+
+      if (overlay.hidden) {
+        modalReturnFocus = document.activeElement;
+        savedBodyOverflow = document.body.style.overflow;
+      }
+
+      modalOnClose = options.onClose || null;
+      modalKind = options.kind || "";
+      $("modal").classList.toggle("book-modal", modalKind === "book");
+      $("modal-close").disabled = false;
+
+      $("modal-title").textContent = title;
+      $("modal-body").innerHTML = html;
+      $("modal-footer").replaceChildren();
+
+      for (const configuration of buttons) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = configuration.text;
+
+        if (configuration.className) button.className = configuration.className;
+        button.addEventListener("click", configuration.action);
+        $("modal-footer").appendChild(button);
+      }
+
+      overlay.hidden = false;
+      document.body.style.overflow = "hidden";
+      $("modal-body").scrollTop = 0;
+
+      requestAnimationFrame(() => {
+        if (overlay.hidden) return;
+        const target = options.focusId ? $(options.focusId) : $("modal");
+        (target || $("modal")).focus();
+      });
+    }
+
+    function hideModal(runCallback = true) {
+      if (pdfBusy || $("modal-overlay").hidden) return;
+
+      const callback = modalOnClose;
+      modalOnClose = null;
+      modalKind = "";
+      $("modal-overlay").hidden = true;
+      document.body.style.overflow = savedBodyOverflow;
+
+      if (modalReturnFocus?.isConnected && !modalReturnFocus.disabled) {
+        modalReturnFocus.focus();
+      }
+
+      modalReturnFocus = null;
+      if (runCallback && callback) callback();
+    }
+
+    function closeModal() {
+      hideModal(true);
+    }
+
+    $("modal-close").addEventListener("click", closeModal);
+
+    $("modal-overlay").addEventListener("click", event => {
+      if (event.target === $("modal-overlay")) closeModal();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (!$("modal-overlay").hidden) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeModal();
+          return;
+        }
+
+        if (modalKind === "book" && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+          event.preventDefault();
+          turnBookPage(event.key === "ArrowRight" ? 1 : -1);
+          return;
+        }
+
+        if (event.key === "Tab") {
+          const focusable = Array.from($("modal").querySelectorAll(
+            'button:not(:disabled), input:not(:disabled), select, textarea, a[href], [tabindex="0"]'
+          )).filter(element => element.getClientRects().length);
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+
+          if (!first) {
+            event.preventDefault();
+            $("modal").focus();
+          } else if (event.shiftKey &&
+            (document.activeElement === first || document.activeElement === $("modal"))) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey &&
+            (document.activeElement === last || document.activeElement === $("modal"))) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      } else if (event.key === "Escape") {
+        clearSelection();
+        state.mode = "pan";
+        renderTools();
+        renderHint();
+      }
+    });
+
+    function taskContent(index) {
+      switch (index) {
+        case 0:
+          return `
+            <p>Ein Navi muss zuerst wissen, <strong>wo Start und Ziel liegen</strong>.
+               Finde diese Orte auf der Karte:</p>
+            <ol>
+              <li><strong>🏫 Hermann-Hesse-Realschule</strong> – unser Start.</li>
+              <li><strong>🛒 EDEKA Gebauer in der Dieselstraße</strong> – unser Ziel.</li>
+              <li>Ziehe die pulsierenden Emoji-Marker auf die passenden Gebäude.
+                  Auf dem Tablet: berühren, festhalten und bewegen.</li>
+              <li>In höchstens <strong>60 m Entfernung</strong> rastet ein Marker ein.
+                  Bei einem Fehlversuch siehst du die Restentfernung.</li>
+            </ol>
+            <div class="callout">
+              <strong>Merke: Knoten</strong><br>
+              Ein Knoten stellt einen Ort dar, zum Beispiel eine Schule, ein Geschäft oder eine Kreuzung.
+            </div>
+            <p>Wenn beide Orte stimmen, kannst du deinen eigenen Graphen zeichnen.</p>`;
+
+        case 1:
+          return `
+            <p>Zeichne deinen bevorzugten <strong>Fußweg von der Schule zum EDEKA</strong>.</p>
+            <ol>
+              <li>Wähle <strong>📍 Knoten setzen</strong>. Tippe an Kreuzungen und Abbiegungen
+                  auf die Karte. Deine Knoten heißen K1, K2, …</li>
+              <li>Wähle <strong>🔗 Kante ziehen</strong>. Tippe auf einen Knoten
+                  und anschließend auf den nächsten.</li>
+              <li>Verbinde auch <strong>🏫 Start und 🛒 Ziel</strong> mit deinem Netz.</li>
+              <li>Eine durchgehende Verbindung wird automatisch erkannt.
+                  Du kannst zusätzlich <strong>🔍 Pfad prüfen</strong> verwenden.</li>
+            </ol>
+            <div class="callout">
+              <strong>Kante und Kantenzug</strong><br>
+              Eine Kante verbindet zwei Knoten. Folgst du mehreren passenden Verbindungen
+              hintereinander, entsteht ein Kantenzug.
+            </div>
+            <div class="callout orange">
+              Zeichne entlang begehbarer Wege, nicht quer durch Gebäude.
+              Die Prüfung erkennt Verbindungen im Graphen, überprüft aber keine echten Straßen.
+            </div>
+            <p>Deine erste gefundene Route wird für die nächste Aufgabe gespeichert.</p>`;
+
+        case 2: {
+          const blocked = edges.get(state.blockedEdgeId);
+
+          const blockedText = blocked
+            ? `Die Kante <strong>${escapeHTML(nodes.get(blocked.a).label)} ↔ ${escapeHTML(nodes.get(blocked.b).label)}</strong>
+               ist rot gestrichelt und gesperrt.`
+            : `<strong>Noch ist keine Kante vorhanden.</strong>
+               Deine erste gezeichnete Kante wird automatisch zur Baustelle.`;
+
+          return `
+            <div class="callout orange">
+              <strong>🚧 Baustelle verhindert das Durchkommen – finde einen alternativen Pfad!</strong>
+            </div>
+            <p>${blockedText}</p>
+            <ol>
+              <li>Suche eine andere Verbindung zwischen Schule und EDEKA.</li>
+              <li>Ergänze Knoten und Kanten, um die Baustelle zu umgehen.</li>
+              <li>Dein Ersatzweg braucht <strong>mindestens zwei Kanten,
+                  die nicht zur gespeicherten ersten Route gehörten</strong>.</li>
+              <li>Die gesperrte Kante darf nicht benutzt werden.
+                  Eine zweite Linie direkt darüber ist keine Lösung.</li>
+            </ol>
+            <div class="callout">
+              <strong>Wie bei einem Navi:</strong><br>
+              Eine gesperrte Verbindung fällt aus. Deshalb brauchst du einen anderen Weg.
+            </div>
+            <p>Die Prüfung läuft automatisch. Eine fast identische Verbindung wird
+               zum Beispiel mit <strong>„abweichend: 1/2“</strong> angezeigt.</p>
+            <p class="small">
+              Ein Abstecher in eine Sackgasse und zurück zählt nicht als Umleitung.
+              Die Baustelle bleibt auch in späteren Aufgaben gesperrt.
+            </p>`;
+        }
+
+        case 3:
+          return `
+            <p>Erkläre dein Modell mit den passenden Fachbegriffen.</p>
+            <ol>
+              <li>Hole dir das <strong>physische Arbeitsblatt bei deiner Lehrkraft</strong>.</li>
+              <li>Erkläre <strong>Knoten, Kante, Kantenzug und Graph</strong>
+                  am Beispiel eines Navigationssystems.</li>
+              <li>Verwende Beispiele aus deinem eigenen Netz.</li>
+              <li>Blättere bei Bedarf im <strong>📖 Glossar-Buch</strong>.
+                  Jede Seite erklärt einen Begriff mit einem Bild.</li>
+              <li>Bestätige dein fertiges Arbeitsblatt mit <strong>Erledigt ✔</strong>.</li>
+            </ol>
+            <div class="callout green">
+              <strong>So könnte eine Erklärung beginnen:</strong><br>
+              „Eine Kante verbindet zwei Knoten. In meinem Navi-Modell stellt sie
+              einen Straßenabschnitt zwischen zwei Kreuzungen dar.“
+            </div>`;
+
+        case 4:
+          return `
+            <p>⭐ Baue jetzt verschiedene Wege von der Schule nach Hause.</p>
+            <ol>
+              <li>Tippe auf <strong>🏠 Zuhause-Marker hinzufügen</strong>.</li>
+              <li>Ziehe den lila Knoten an den gewünschten Ort.</li>
+              <li>Baue <strong>mindestens zwei verschiedene Routen von 🏫 nach 🏠</strong>.</li>
+              <li>Gemeinsame Abschnitte sind erlaubt, aber mindestens eine Verbindung
+                  muss unterschiedlich sein. Die Baustelle bleibt gesperrt.</li>
+              <li>Nutze <strong>🔍 Pfad prüfen</strong>. Schließe die Aufgabe anschließend
+                  hier mit <strong>Erledigt ✔</strong> ab.</li>
+            </ol>
+            <div class="callout purple">
+              <strong>Denkfrage:</strong><br>
+              Welche Route würde ein Navi wählen? Die kürzeste, die schnellste oder
+              eine mit weniger Ampeln? Begründe deine Entscheidung.
+            </div>
+            <div class="callout orange">
+              <strong>Deine Privatsphäre zählt:</strong><br>
+              Ein ungefährer oder erfundener Zuhause-Ort reicht völlig.
+              Trage keine Adresse oder Namen ein. Dein Graph wird nicht hochgeladen.
+              Für den Kartenausschnitt werden jedoch Kartenkacheln geladen.
+              Überlege vor dem PDF-Export, ob du deinen Zuhause-Ort zeigen möchtest.
+            </div>`;
+      }
+
+      return "";
+    }
+
+    function openTask(index, completedNow = null) {
+      if (index >= TASKS.length) {
+        openCompletion();
+        return;
+      }
+
+      if (index > state.task && !state.completed[index]) {
+        showModal(
+          "🔒 Noch einen Schritt nach dem anderen",
+          `<p>Diese Aufgabe wird später freigeschaltet.</p>
+           <div class="callout">
+             Du bist gerade bei <strong>${escapeHTML(TASKS[state.task].title)}</strong>.
+           </div>`,
+          [{ text: "Zur aktuellen Aufgabe", className: "primary", action: () => openTask(state.task) }]
+        );
+        return;
+      }
+
+      let introduction = "";
+
+      if (completedNow === 0) {
+        introduction = '<div class="callout green">✅ Beide Orte stimmen! Die Zeichenwerkzeuge sind freigeschaltet.</div>';
+      } else if (completedNow === 1) {
+        introduction = '<div class="callout green">🎉 Weg gefunden! Deine erste Route wurde gespeichert.</div>';
+      } else if (completedNow === 2) {
+        introduction = '<div class="callout green">🎉 Umleitung gefunden – dein Weg umfährt die Baustelle!</div>';
+      }
+
+      const completedInfo = state.completed[index]
+        ? `<div class="callout green">${
+            state.completed[index] === "skipped"
+              ? "✔ Diese Aufgabe wurde mit Lehrkraft-Passwort freigegeben."
+              : "✔ Diese Aufgabe hast du bereits erledigt."
+          }</div>`
+        : "";
+
+      const buttons = [];
+      const isCurrent = index === state.task;
+
+      if (index === 3) {
+        buttons.push({
+          text: "📖 Glossar-Buch öffnen",
+          action: () => openGlossary(index)
+        });
+      }
+
+      if (isCurrent && (index === 1 || index === 2)) {
+        buttons.push({
+          text: "⏭ Überspringen (Lehrkraft-Passwort)",
+          action: () => openPassword(index)
+        });
+      }
+
+      buttons.push({
+        text: isCurrent && index < 3 ? "Los geht’s – zur Karte" : "Zur Karte",
+        className: isCurrent && index < 3 ? "primary" : "",
+        action: closeModal
+      });
+
+      if (isCurrent && (index === 3 || index === 4)) {
+        buttons.push({
+          text: "Erledigt ✔",
+          className: index === 4 ? "bonus" : "success",
+          action: finishManualTask
+        });
+      }
+
+      showModal(
+        `${TASKS[index].icon} ${index === 4 ? "Sternchen-Aufgabe" : "Aufgabe " + (index + 1)} – ${TASKS[index].title}`,
+        introduction + completedInfo + taskContent(index),
+        buttons,
+        {
+          onClose: () => {
+            if (state.task === index && (index === 1 || index === 2)) updateGraph();
+          }
+        }
+      );
+    }
+
+    function finishManualTask() {
+      if (state.task !== 3 && state.task !== 4) return;
+
+      if (state.task === 4 && analyzeGraph().homePaths.length < 2) {
+        showHomeFeedback(analyzeGraph());
+        return;
+      }
+
+      remember("Aufgabe manuell abgeschlossen");
+      advanceState("done");
+      updateGraph({ automatic: false });
+
+      if (state.task === 5) openCompletion();
+      else openTask(state.task);
+    }
+
+    function openCompletion() {
+      const skipped = state.completed.filter(value => value === "skipped").length;
+
+      showModal(
+        "🏆 Alle Aufgaben erledigt",
+        `<p><strong>Du hast ein Navigationsnetz als Graph modelliert!</strong></p>
+         <ul>
+           <li>Du hast Orte als <strong>Knoten</strong> dargestellt.</li>
+           <li>Du hast Verbindungen als <strong>Kanten</strong> eingezeichnet.</li>
+           <li>Du hast dich mit Routen und einer Baustelle beschäftigt.</li>
+           <li>Du hast Fachbegriffe angewendet und verschiedene Wege verglichen.</li>
+         </ul>
+         ${skipped ? `<p class="small">${skipped} Aufgabe(n) wurden mit Lehrkraft-Passwort freigegeben.</p>` : ""}
+         <div class="callout green">
+           Sichere deine Lösung jetzt mit einem direkten PDF-Export.
+         </div>
+         <p>Du kannst anschließend weiter experimentieren.</p>`,
+        [
+          { text: "Weiter experimentieren", action: closeModal },
+          { text: "📄 Als PDF exportieren", className: "primary", action: openPDF }
+        ]
+      );
+    }
+
+    function openPassword(taskIndex) {
+      // Pädagogische Hürde, kein sicherer Zugriffsschutz in einer lokalen HTML-Datei.
+      showModal(
+        "🔑 Lehrkraft-Freigabe",
+        `<p>Bitte lass deine Lehrkraft das Passwort eingeben.</p>
+         <form id="password-form">
+           <label for="teacher-password"><strong>Lehrkraft-Passwort</strong></label>
+           <input
+             id="teacher-password"
+             class="password-input"
+             type="password"
+             autocomplete="off"
+             autocapitalize="none"
+             spellcheck="false"
+             placeholder="Passwort eingeben"
+             enterkeyhint="done"
+           >
+           <p class="small">Enter bestätigt die Eingabe. Groß- und Kleinschreibung sind egal.</p>
+         </form>`,
+        [
+          { text: "Zurück zur Aufgabe", action: () => openTask(taskIndex) },
+          { text: "Freigeben", className: "primary", action: () => submitPassword(taskIndex) }
+        ],
+        { focusId: "teacher-password" }
+      );
+
+      $("password-form").addEventListener("submit", event => {
+        event.preventDefault();
+        submitPassword(taskIndex);
+      });
+    }
+
+    function submitPassword(taskIndex) {
+      const input = $("teacher-password");
+      if (!input || state.task !== taskIndex) return;
+
+      if (input.value.trim().toLowerCase() !== "iter") {
+        showModal(
+          "😏 Netter Versuch!",
+          `<p>Das war leider nicht das Lehrkraft-Passwort.</p>
+           <div class="callout orange">
+             <strong>Arbeite weiter – du schaffst die Aufgabe auch ohne Abkürzung! 💪</strong>
+           </div>
+           <p>Nutze die Tipps oder frage deine Lehrkraft nach einem Hinweis.</p>`,
+          [{ text: "Okay, ich arbeite weiter!", className: "primary", action: closeModal }]
+        );
+        return;
+      }
+
+      remember("Aufgabe mit Lehrkraft-Passwort übersprungen");
+      advanceState("skipped");
+      updateGraph({ automatic: false });
+      openTask(state.task);
+    }
+
+    function checkPath() {
+      if (!isReady()) return;
+
+      const previousTask = state.task;
+      updateGraph();
+      if (state.task !== previousTask) return;
+
+      const result = analyzeGraph();
+
+      if (state.task === 1) {
+        showModal(
+          "🔍 Noch keine durchgehende Verbindung",
+          `<p>Von 🏫 nach 🛒 fehlt noch ein zusammenhängender Pfad.</p>
+           <ol>
+             <li>Hat die Schule eine Verbindung zu deinem ersten Zwischenknoten?</li>
+             <li>Gibt es zwischen zwei Knoten noch eine Lücke?</li>
+             <li>Ist auch der letzte Knoten mit dem EDEKA verbunden?</li>
+           </ol>
+           <div class="callout orange">
+             Linien, die sich nur kreuzen, sind nicht automatisch verbunden.
+             Beide Verbindungen müssen denselben Knoten als Endpunkt haben.
+           </div>`,
+          [{ text: "Ich prüfe die Lücken", className: "primary", action: closeModal }]
+        );
+        return;
+      }
+
+      if (state.task === 2) {
+        if (!state.blockedEdgeId) {
+          showModal(
+            "🚧 Zuerst eine Baustellenkante",
+            `<p>Nach dem Überspringen war noch keine Kante vorhanden.</p>
+             <p>Zeichne eine erste Kante. Sie wird automatisch gesperrt.
+                Baue anschließend einen Ersatzweg mit mindestens zwei anderen Kanten.</p>`,
+            [{ text: "Zur Karte", className: "primary", action: closeModal }]
+          );
+        } else if (!result.schoolPath) {
+          showModal(
+            "🚧 Die Baustelle unterbricht den Weg",
+            `<p>Ohne die rot gestrichelte Kante gibt es noch keinen durchgehenden Pfad.</p>
+             <ol>
+               <li>Setze neue Knoten auf einer anderen Straße.</li>
+               <li>Verbinde die Umleitung vor und nach der Baustelle mit deinem Netz.</li>
+               <li>Nutze mindestens zwei Kanten außerhalb der ersten Route.</li>
+             </ol>`,
+            [{ text: "Umleitung ergänzen", className: "primary", action: closeModal }]
+          );
+        } else {
+          showModal(
+            "🔍 Fast geschafft – die Route ist noch zu ähnlich",
+            `<p>Es gibt bereits eine Verbindung ohne Baustellenkante.</p>
+             <div class="callout orange">
+               <strong>Abweichend: ${result.detour.newCount}/2 Kanten</strong>
+             </div>
+             <p>Ergänze einen echten Umweg mit mindestens zwei Kanten außerhalb der ersten Route.
+                Ein Abstecher in eine Sackgasse und zurück zählt nicht.</p>`,
+            [{ text: "Umleitung erweitern", className: "primary", action: closeModal }]
+          );
+        }
+        return;
+      }
+
+      if (state.task === 4) {
+        showHomeFeedback(result);
+        return;
+      }
+
+      showModal(
+        "📝 Hier entscheidest du selbst",
+        `<p>${state.task === 3
+          ? "Bearbeite das physische Arbeitsblatt und bestätige es im Aufgabenfenster mit „Erledigt ✔“."
+          : "Der Lernweg ist bereits abgeschlossen. Du kannst weiter experimentieren oder eine PDF exportieren."}</p>`,
+        [
+          { text: "Zur Karte", action: closeModal },
+          { text: "Aufgabenfenster", className: "primary", action: () => openTask(state.task) }
+        ]
+      );
+    }
+
+    function pathText(path) {
+      return path.nodes.map(id => nodes.get(id)?.label || "?").join(" → ");
+    }
+
+    function showHomeFeedback(result) {
+      if (!homeNode()) {
+        showModal(
+          "🏠 Dein Zuhause-Knoten fehlt noch",
+          `<p>Füge zuerst über <strong>„🏠 Zuhause-Marker hinzufügen“</strong> den lila Knoten hinzu.</p>
+           <p>Ein ungefährer oder erfundener Ort reicht.</p>`,
+          [{ text: "Zur Karte", className: "primary", action: closeModal }]
+        );
+      } else if (result.homePaths.length === 0) {
+        showModal(
+          "🔍 Noch kein Weg nach Hause",
+          `<p>Verbinde 🏠 mit deinem Netz und prüfe die Anschlüsse bis zur Schule.</p>
+           <div class="callout">Die Baustellenkante bleibt gesperrt.</div>`,
+          [{ text: "Verbindung ergänzen", className: "primary", action: closeModal }]
+        );
+      } else if (result.homePaths.length === 1) {
+        showModal(
+          "🏠 Ein Weg ist da – einer fehlt noch",
+          `<div class="callout green">${escapeHTML(pathText(result.homePaths[0]))}</div>
+           <p>Für die Sternchen-Aufgabe brauchst du <strong>zwei verschiedene Routen</strong>.</p>
+           <p>Ergänze einen anderen Abschnitt oder einen zweiten Anschluss an Zuhause.
+              Ein Sackgassen-Abstecher zählt nicht als zweite Route.</p>`,
+          [{ text: "Zweite Route bauen", className: "primary", action: closeModal }]
+        );
+      } else {
+        showModal(
+          "🎉 Zwei verschiedene Routen gefunden!",
+          `<div class="callout green">
+             <strong>Route A:</strong> ${escapeHTML(pathText(result.homePaths[0]))}<br>
+             <strong>Route B:</strong> ${escapeHTML(pathText(result.homePaths[1]))}
+           </div>
+           <p>Die gefundenen Routen sind grün hervorgehoben.</p>
+           <div class="callout purple">
+             Welche Route würde ein Navi wählen? Begründe deine Entscheidung.
+           </div>`,
+          [
+            { text: "Weiter vergleichen", action: closeModal },
+            { text: "Zur Aufgabe / Erledigt ✔", className: "bonus", action: () => openTask(4) }
+          ]
+        );
+      }
+    }
+
+    function addHome() {
+      const existing = homeNode();
+
+      if (existing) {
+        map.panTo(existing.marker.getLatLng(), { animate: false });
+        setHint("Hier ist dein Zuhause-Knoten. Du kannst ihn verschieben oder verbinden.");
+        return;
+      }
+
+      if (state.task < 4) return;
+
+      remember("Zuhause-Marker hinzugefügt");
+      const center = map.getCenter();
+
+      createNode({
+        id: uid("node"),
+        label: "🏠",
+        kind: "home",
+        placed: true,
+        lat: center.lat,
+        lng: center.lng
+      });
+
+      state.mode = "pan";
+      clearSelection();
+      updateGraph();
+      setHint("🏠 liegt in der Kartenmitte. Ziehe den Knoten an einen ungefähren oder erfundenen Zuhause-Ort.");
+    }
+
+    /* ---------- Blätterbares Glossar-Buch mit eingebetteten SVG-Bildern ---------- */
+
+    function svgFrame(title, description, content) {
+      return `
+        <svg viewBox="0 0 420 275" role="img" aria-label="${escapeHTML(title)}">
+          <title>${escapeHTML(title)}</title>
+          <desc>${escapeHTML(description)}</desc>
+          <rect x="0" y="0" width="420" height="275" rx="14" fill="#f5f9fd"/>
+          ${content}
+        </svg>`;
+    }
+
+    function svgNode(x, y, label, color = COLORS.blue, radius = 21) {
+      return `
+        <circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="white" stroke-width="4"/>
+        <text x="${x}" y="${y + 5}" text-anchor="middle"
+          font-family="system-ui, sans-serif" font-weight="800" font-size="14"
+          fill="white">${escapeHTML(label)}</text>`;
+    }
+
+    function svgText(x, y, text, color = COLORS.ink, size = 14, weight = 600) {
+      return `<text x="${x}" y="${y}" text-anchor="middle"
+        font-family="system-ui, sans-serif" font-size="${size}" font-weight="${weight}"
+        fill="${color}">${escapeHTML(text)}</text>`;
+    }
+
+    function svgLine(x1, y1, x2, y2, color = "#aec3dd", width = 8, dashed = false) {
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+        stroke="${color}" stroke-width="${width}" stroke-linecap="round"
+        ${dashed ? 'stroke-dasharray="12 10"' : ""}/>`;
+    }
+
+    const BOOK_PAGES = [
+      {
+        title: "Der Knoten",
+        eyebrow: "Ein wichtiger Ort",
+        text: `
+          <p>Ein <strong>Knoten</strong> ist ein Punkt in deinem Netz.</p>
+          <p>Er steht für einen Ort, an dem ein Weg beginnt, endet oder seine Richtung ändern kann.</p>
+          <div class="callout">
+            <strong>Im Navi:</strong><br>
+            Eine Schule, eine Kreuzung oder ein Geschäft kann ein Knoten sein.
+          </div>`,
+        illustration: () => svgFrame(
+          "Drei Orte als Knoten",
+          "Die Schule ist ein grüner Knoten, die Kreuzung K1 ein blauer Knoten und EDEKA ein roter Knoten.",
+          `
+            <rect x="28" y="42" width="90" height="57" rx="9" fill="#d6eedf"/>
+            <path d="M25 43 L73 16 L121 43" fill="#87bd9b"/>
+            <rect x="65" y="70" width="17" height="29" fill="#168044"/>
+            <path d="M174 65 H246 M210 30 V102" stroke="#c7d5e5" stroke-width="18"/>
+            <rect x="302" y="41" width="90" height="58" rx="8" fill="#ffe0e3"/>
+            ${svgText(347, 73, "EDEKA", COLORS.red, 15)}
+            ${svgText(73, 131, "wird zu", "#77869a", 12)}
+            ${svgText(210, 131, "wird zu", "#77869a", 12)}
+            ${svgText(347, 131, "wird zu", "#77869a", 12)}
+            ${svgNode(73, 178, "S", COLORS.green, 25)}
+            ${svgNode(210, 178, "K1", COLORS.blue, 25)}
+            ${svgNode(347, 178, "E", COLORS.red, 25)}
+            ${svgText(73, 226, "Schule")}
+            ${svgText(210, 226, "Kreuzung")}
+            ${svgText(347, 226, "EDEKA")}
+          `
+        ),
+        caption: "Aus echten Orten werden übersichtliche Punkte.",
+        question: "Welcher Knoten ist auf deiner Karte der Start? Welcher ist das Ziel?"
+      },
+      {
+        title: "Die Kante",
+        eyebrow: "Eine direkte Verbindung",
+        text: `
+          <p>Eine <strong>Kante</strong> verbindet zwei Knoten.</p>
+          <p>In deinem Netz zeichnest du sie als Linie zwischen den beiden Punkten.</p>
+          <div class="callout">
+            <strong>Im Navi:</strong><br>
+            Eine Kante kann einen Straßenabschnitt zwischen zwei Kreuzungen darstellen.
+          </div>`,
+        illustration: () => svgFrame(
+          "Eine Kante zwischen Schule und Kreuzung",
+          "Eine blaue Linie verbindet den grünen Schulknoten S mit dem blauen Knoten K1.",
+          `
+            ${svgLine(78, 145, 341, 145, COLORS.blue, 10)}
+            <rect x="157" y="58" width="106" height="39" rx="12" fill="#e1edff"/>
+            ${svgText(210, 84, "Kante", COLORS.blue, 19)}
+            <path d="M210 104 V125" stroke="#175cba" stroke-width="3"/>
+            <path d="M202 118 L210 128 L218 118" fill="none" stroke="#175cba" stroke-width="3"/>
+            ${svgNode(78, 145, "S", COLORS.green, 27)}
+            ${svgNode(341, 145, "K1", COLORS.blue, 27)}
+            ${svgText(78, 202, "Schule")}
+            ${svgText(341, 202, "Kreuzung")}
+            ${svgText(210, 249, "Zwei Knoten – eine Verbindung", "#586981", 14)}
+          `
+        ),
+        caption: "Die blaue Linie ist die Kante. Die beiden Kreise sind die Knoten.",
+        question: "Zeige auf deiner Karte eine Kante. Welche beiden Knoten verbindet sie?"
+      },
+      {
+        title: "Der Kantenzug",
+        eyebrow: "Schritt für Schritt durch das Netz",
+        text: `
+          <p>Ein <strong>Kantenzug</strong> entsteht, wenn du passenden Kanten nacheinander folgst.</p>
+          <p>Du gehst von einem Knoten über eine Kante zum nächsten Knoten – und von dort weiter.</p>
+          <div class="callout green">
+            <strong>Beispiel:</strong><br>
+            Schule → K1 → K2 → EDEKA
+          </div>
+          <p class="small">In einem Kantenzug können Orte erneut vorkommen.
+            Für unsere geprüften Routen suchen wir Wege ohne solche Wiederholungen.</p>`,
+        illustration: () => svgFrame(
+          "Ein Kantenzug von der Schule zum EDEKA",
+          "Der grüne Weg führt von S über K1 und K2 nach E. Eine graue Abzweigung zu K3 gehört nicht zum markierten Kantenzug.",
+          `
+            ${svgLine(144, 171, 197, 57, "#bccadb", 6)}
+            ${svgLine(54, 171, 144, 171, COLORS.green, 9)}
+            ${svgLine(144, 171, 253, 99, COLORS.green, 9)}
+            ${svgLine(253, 99, 363, 171, COLORS.green, 9)}
+            ${svgNode(197, 57, "K3", "#91a5be", 18)}
+            ${svgNode(54, 171, "S", COLORS.green)}
+            ${svgNode(144, 171, "K1")}
+            ${svgNode(253, 99, "K2")}
+            ${svgNode(363, 171, "E", COLORS.red)}
+            ${svgText(54, 213, "Start", COLORS.green, 13)}
+            ${svgText(363, 213, "Ziel", COLORS.red, 13)}
+            ${svgText(210, 249, "S → K1 → K2 → E", COLORS.green, 18)}
+          `
+        ),
+        caption: "Nur die grünen Verbindungen gehören zu diesem Kantenzug.",
+        question: "Lies einen Weg in deinem eigenen Graphen laut vor: Welche Knoten besuchst du der Reihe nach?"
+      },
+      {
+        title: "Der Graph",
+        eyebrow: "Das gesamte Netz",
+        text: `
+          <p>Ein <strong>Graph</strong> ist das gesamte Netz aus Knoten und Kanten.</p>
+          <p>Er zeigt dir, <strong>welche Orte miteinander verbunden sind</strong>.</p>
+          <div class="callout">
+            <strong>Wichtig:</strong><br>
+            Der Graph ist nicht nur eine einzelne Route. Auch andere Verbindungen,
+            Abzweigungen und unverbundene Knoten gehören dazu.
+          </div>`,
+        illustration: () => svgFrame(
+          "Ein Graph mit mehreren Verbindungen",
+          "Fünf Knoten sind durch sechs Kanten verbunden. Zwischen Schule und EDEKA gibt es verschiedene mögliche Wege.",
+          `
+            ${svgLine(54, 146, 158, 65, COLORS.blue, 6)}
+            ${svgLine(54, 146, 170, 213, COLORS.blue, 6)}
+            ${svgLine(158, 65, 274, 106, COLORS.blue, 6)}
+            ${svgLine(170, 213, 274, 106, COLORS.blue, 6)}
+            ${svgLine(170, 213, 369, 177, COLORS.blue, 6)}
+            ${svgLine(274, 106, 369, 177, COLORS.blue, 6)}
+            ${svgNode(54, 146, "S", COLORS.green)}
+            ${svgNode(158, 65, "K1")}
+            ${svgNode(170, 213, "K2")}
+            ${svgNode(274, 106, "K3")}
+            ${svgNode(369, 177, "E", COLORS.red)}
+            ${svgText(210, 30, "Alle Knoten + alle Kanten", COLORS.blue, 17)}
+          `
+        ),
+        caption: "Dieses gesamte Netz ist ein Graph – nicht nur ein ausgewählter Weg.",
+        question: "Zähle die Knoten und Kanten im Bild. Findest du zwei verschiedene Wege von S nach E?"
+      },
+      {
+        title: "Die Umleitung",
+        eyebrow: "Eine gesperrte Verbindung umgehen",
+        text: `
+          <p>Bei einer <strong>Umleitung</strong> führt dein Weg über andere Verbindungen.</p>
+          <p>Die gesperrte Kante bleibt im Bild sichtbar, darf aber nicht benutzt werden.</p>
+          <div class="callout orange">
+            <strong>Im Navi:</strong><br>
+            Wenn eine Straße gesperrt ist, wird ein anderer möglicher Weg benötigt.
+          </div>`,
+        illustration: () => svgFrame(
+          "Eine Umleitung um eine gesperrte Kante",
+          "Die direkte Kante zwischen K1 und E ist rot gestrichelt und gesperrt. Der grüne Ersatzweg führt über K2.",
+          `
+            ${svgLine(47, 167, 144, 167, COLORS.green, 9)}
+            ${svgLine(144, 167, 369, 167, COLORS.red, 7, true)}
+            ${svgLine(144, 167, 258, 67, COLORS.green, 9)}
+            ${svgLine(258, 67, 369, 167, COLORS.green, 9)}
+            ${svgNode(47, 167, "S", COLORS.green)}
+            ${svgNode(144, 167, "K1")}
+            ${svgNode(258, 67, "K2")}
+            ${svgNode(369, 167, "E", COLORS.red)}
+            <rect x="203" y="188" width="111" height="30" rx="8" fill="#ffe1e4"/>
+            ${svgText(258, 209, "gesperrt", COLORS.red, 14)}
+            ${svgText(210, 251, "Grün zeigt den Ersatzweg", COLORS.green, 16)}
+          `
+        ),
+        caption: "Die beiden grünen Kanten über K2 ersetzen die gesperrte Verbindung.",
+        question: "An welchem Knoten verlässt der Ersatzweg die direkte Verbindung? Über welchen Knoten führt er?"
+      }
+    ];
+
+    function openGlossary(backToTask = null) {
+      bookReturnTask = backToTask;
+
+      showModal(
+        "📖 Dein Glossar-Buch",
+        '<div id="book-host"></div>',
+        [
+          {
+            text: backToTask !== null ? "Zurück zur Aufgabe" : "Buch schließen",
+            className: "primary",
+            action: () => {
+              if (bookReturnTask !== null) openTask(bookReturnTask);
+              else closeModal();
+            }
+          }
+        ],
+        { kind: "book" }
+      );
+
+      renderBookPage();
+    }
+
+    function renderBookPage() {
+      const page = BOOK_PAGES[bookPage];
+      const host = $("book-host");
+      if (!host) return;
+
+      host.innerHTML = `
+        <article class="book-page" aria-labelledby="book-page-title">
+          <div class="book-eyebrow">${escapeHTML(page.eyebrow)}</div>
+          <h3 id="book-page-title">${escapeHTML(page.title)}</h3>
+
+          <div class="book-content">
+            <div class="book-explanation">${page.text}</div>
+            <figure class="book-example">
+              ${page.illustration()}
+              <figcaption>${escapeHTML(page.caption)}</figcaption>
+            </figure>
+          </div>
+
+          <div class="book-think">
+            <strong>💭 Du bist dran:</strong><br>${escapeHTML(page.question)}
+          </div>
+
+          <div class="book-page-number">${bookPage + 1}</div>
+        </article>
+
+        <nav class="book-nav" aria-label="Im Glossar-Buch blättern">
+          <button id="book-prev" ${bookPage === 0 ? "disabled" : ""}>← Zurück</button>
+
+          <div class="book-position" aria-live="polite" aria-atomic="true">
+            Seite ${bookPage + 1} von ${BOOK_PAGES.length}
+            <span class="book-dots" aria-hidden="true">
+              ${BOOK_PAGES.map((_, index) => `<span class="${index === bookPage ? "active" : ""}"></span>`).join("")}
+            </span>
+          </div>
+
+          <button id="book-next" class="primary"
+            ${bookPage === BOOK_PAGES.length - 1 ? "disabled" : ""}>Weiter →</button>
+        </nav>
+        <p class="small" style="text-align:center;margin:12px 0 0">
+          Tippe auf „Weiter“ oder „Zurück“. Am Computer funktionieren auch die Pfeiltasten.
+        </p>`;
+
+      $("book-prev").addEventListener("click", () => turnBookPage(-1));
+      $("book-next").addEventListener("click", () => turnBookPage(1));
+    }
+
+    function turnBookPage(direction) {
+      const next = Math.max(0, Math.min(BOOK_PAGES.length - 1, bookPage + direction));
+      if (next === bookPage) return;
+
+      bookPage = next;
+      renderBookPage();
+      $("modal-body").scrollTop = 0;
+
+      const preferredButton = direction > 0 ? $("book-next") : $("book-prev");
+      const fallbackButton = direction > 0 ? $("book-prev") : $("book-next");
+      (preferredButton.disabled ? fallbackButton : preferredButton).focus();
+    }
+
+    /* ---------- Reiner lokaler PDF-Export, ohne Druckdialog ---------- */
+
+    function openPDF() {
+      map.stop();
+
+      const offscreenNodes = Array.from(nodes.values()).filter(node =>
+        node.placed && !map.getBounds().contains(node.marker.getLatLng())
+      ).length;
+
+      showModal(
+        "📄 Lösung als PDF exportieren",
+        `<p>Deine Lösung wird direkt als <strong>PDF-Datei</strong> erstellt und heruntergeladen.
+           Es öffnet sich kein Druckdialog.</p>
+         <ul>
+           <li>Enthalten sind der <strong>aktuelle Kartenausschnitt</strong>, dein Graph,
+               eine Legende und dein Aufgabenstand.</li>
+           <li>Werkzeugleiste, Aufgaben-Banner und Dialoge erscheinen nicht in der PDF.</li>
+           <li>Die Datei wird vollständig auf deinem Gerät erstellt.
+               Dein Graph wird nicht hochgeladen.</li>
+         </ul>
+         ${offscreenNodes ? `
+           <div class="callout orange">
+             <strong>${offscreenNodes} Knoten liegen außerhalb des sichtbaren Ausschnitts.</strong><br>
+             Passe die Karte an, wenn auch diese Knoten in der PDF zu sehen sein sollen.
+           </div>` : ""}
+         <div class="callout">
+           <strong>Vorher prüfen:</strong> Ist dein gesamter gewünschter Weg sichtbar?
+           Sind die Kartenkacheln geladen?
+           Soll ein gesetzter Zuhause-Marker wirklich in der PDF erscheinen?
+         </div>
+         <p class="small">
+           Die PDF ist eine Bilddokumentation deiner Lösung, keine wieder einlesbare Projektdatei.
+           Auf manchen Tablets öffnet sich die PDF zunächst in einer Vorschau.
+         </p>
+         <div id="pdf-status" class="pdf-status" role="status" hidden></div>`,
+        [
+          { text: "Kartenausschnitt anpassen", action: closeModal },
+          { text: "📄 PDF herunterladen", className: "primary", action: () => exportPDF(false) }
+        ],
+        { kind: "pdf" }
+      );
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function waitForMap() {
+      const deadline = performance.now() + 7000;
+
+      while ((tileLayer.isLoading() || mapMoving) && performance.now() < deadline) {
+        await sleep(100);
+      }
+
+      if (mapMoving) throw new Error("Die Karte bewegt sich noch. Warte kurz und versuche es erneut.");
+    }
+
+    function currentTileImages() {
+      const zoom = map.getZoom();
+      const bounds = map.getPixelBounds();
+      const tileSize = 256;
+      const result = [];
+      const missing = [];
+
+      const minX = Math.floor(bounds.min.x / tileSize);
+      const minY = Math.floor(bounds.min.y / tileSize);
+      const maxX = Math.ceil(bounds.max.x / tileSize) - 1;
+      const maxY = Math.ceil(bounds.max.y / tileSize) - 1;
+
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const tile = loadedTiles.get(`${zoom}/${x}/${y}`);
+
+          if (!tile || !tile.image.complete || !tile.image.naturalWidth) {
+            missing.push({ x, y });
+          } else {
+            result.push({
+              image: tile.image,
+              x: x * tileSize - bounds.min.x,
+              y: y * tileSize - bounds.min.y
+            });
+          }
+        }
+      }
+
+      return { tiles: result, missing };
+    }
+
+    function canvasText(ctx, text, x, y, size = 20, color = COLORS.ink, weight = 400) {
+      ctx.font = `${weight} ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+    }
+
+    function canvasWrappedText(ctx, text, x, y, maxWidth, lineHeight, size = 18, color = COLORS.ink) {
+      ctx.font = `400 ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+      ctx.fillStyle = color;
+
+      const words = text.split(/\s+/);
+      let line = "";
+      let baseline = y;
+
+      for (const word of words) {
+        const test = line ? line + " " + word : word;
+
+        if (line && ctx.measureText(test).width > maxWidth) {
+          ctx.fillText(line, x, baseline);
+          line = word;
+          baseline += lineHeight;
+        } else {
+          line = test;
+        }
+      }
+
+      if (line) ctx.fillText(line, x, baseline);
+      return baseline;
+    }
+
+    function drawPDFCanvas(withoutMap = false) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1684;
+      canvas.height = 1190;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Dein Browser konnte die PDF-Zeichenfläche nicht erstellen.");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      canvasText(ctx, "Graphen in der Navigation", 44, 57, 35, COLORS.blue, 800);
+      canvasText(
+        ctx,
+        `Meine Lösung · Knoten: ${placedNodeCount()} · Kanten: ${edges.size}`,
+        44, 91, 20, "#586981", 500
+      );
+
+      const completed = state.completed.filter(Boolean).length;
+      const skipped = state.completed.filter(value => value === "skipped").length;
+
+      ctx.textAlign = "right";
+      canvasText(
+        ctx,
+        `${completed}/5 Aufgaben abgeschlossen${skipped ? " · " + skipped + " freigegeben" : ""}`,
+        1640, 59, 18, "#586981", 600
+      );
+      canvasText(ctx, "Name: ____________________   Klasse: ________", 1640, 91, 17, "#586981");
+      ctx.textAlign = "left";
+
+      const mapSize = map.getSize();
+      if (!mapSize.x || !mapSize.y) throw new Error("Die Karte ist gerade nicht sichtbar.");
+
+      const available = { x: 44, y: 119, width: 1596, height: 867 };
+      const scale = Math.min(available.width / mapSize.x, available.height / mapSize.y);
+      const mapWidth = mapSize.x * scale;
+      const mapHeight = mapSize.y * scale;
+      const offsetX = available.x + (available.width - mapWidth) / 2;
+      const offsetY = available.y + (available.height - mapHeight) / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(offsetX, offsetY, mapWidth, mapHeight);
+      ctx.clip();
+      ctx.translate(offsetX, offsetY);
+      ctx.scale(scale, scale);
+
+      ctx.fillStyle = withoutMap ? "#f2f6fb" : "#e4eae4";
+      ctx.fillRect(0, 0, mapSize.x, mapSize.y);
+
+      if (!withoutMap) {
+        const tileData = currentTileImages();
+
+        if (tileData.missing.length) {
+          throw new Error(
+            "Einige Kartenkacheln fehlen noch. Warte kurz oder exportiere ausdrücklich nur den Graphen ohne Kartenhintergrund."
+          );
+        }
+
+        for (const tile of tileData.tiles) {
+          ctx.drawImage(tile.image, tile.x, tile.y, 256, 256);
+        }
+      } else {
+        ctx.strokeStyle = "#dfe7f0";
+        ctx.lineWidth = 1;
+
+        for (let x = 0; x < mapSize.x; x += 50) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, mapSize.y);
+          ctx.stroke();
+        }
+
+        for (let y = 0; y < mapSize.y; y += 50) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(mapSize.x, y);
+          ctx.stroke();
+        }
+      }
+
+      const pixelBounds = map.getPixelBounds();
+      const zoom = map.getZoom();
+
+      function pointFor(node) {
+        return map.project(node.marker.getLatLng(), zoom).subtract(pixelBounds.min);
+      }
+
+      const highlighted = highlightedEdges(analyzeGraph());
+      const orderedEdges = Array.from(edges.values()).sort((a, b) => {
+        const rank = edge => edge.id === state.blockedEdgeId ? 2 : highlighted.has(edge.id) ? 1 : 0;
+        return rank(a) - rank(b);
+      });
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      for (const edge of orderedEdges) {
+        const a = pointFor(nodes.get(edge.a));
+        const b = pointFor(nodes.get(edge.b));
+        const blocked = edge.id === state.blockedEdgeId;
+        const active = highlighted.has(edge.id);
+
+        ctx.strokeStyle = blocked ? COLORS.red : active ? COLORS.green : COLORS.blue;
+        ctx.lineWidth = blocked ? 6 : active ? 7 : 5;
+        ctx.setLineDash(blocked ? [11, 9] : []);
+
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+
+      for (const node of nodes.values()) {
+        const point = pointFor(node);
+        if (point.x < -45 || point.y < -45 || point.x > mapSize.x + 45 || point.y > mapSize.y + 45) continue;
+
+        const color = node.kind === "school" ? COLORS.green
+          : node.kind === "store" ? COLORS.red
+          : node.kind === "home" ? COLORS.purple
+          : COLORS.blue;
+
+        // Buchstaben statt Emojis im PDF sorgen für zuverlässige Darstellung.
+        const symbol = node.kind === "school" ? "S"
+          : node.kind === "store" ? "E"
+          : node.kind === "home" ? "H"
+          : node.label;
+
+        ctx.globalAlpha = node.placed ? 1 : .6;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 15, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.textAlign = "center";
+        canvasText(ctx, symbol, point.x, point.y + 4, symbol.length > 3 ? 8 : 11, "white", 800);
+
+        const label = node.kind === "school" ? "Schule"
+          : node.kind === "store" ? "EDEKA"
+          : node.kind === "home" ? "Zuhause"
+          : "";
+
+        if (label) {
+          const text = label + (node.placed ? "" : " · nicht platziert");
+          ctx.font = '700 10px system-ui, sans-serif';
+          const width = ctx.measureText(text).width + 12;
+          ctx.fillStyle = "rgba(255,255,255,.95)";
+          ctx.fillRect(point.x - width / 2, point.y + 19, width, 17);
+          canvasText(ctx, text, point.x, point.y + 31, 10, COLORS.ink, 700);
+        }
+
+        ctx.textAlign = "left";
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.restore();
+
+      ctx.strokeStyle = "#c9d5e3";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(offsetX, offsetY, mapWidth, mapHeight);
+
+      // Quellenhinweis ist auch im exportierten Dokument enthalten.
+      canvasText(
+        ctx,
+        withoutMap
+          ? "Export ohne Kartenhintergrund · Positionen aus deinem aktuellen Kartenausschnitt"
+          : "Kartenmaterial: © OpenStreetMap-Mitwirkende · openstreetmap.org/copyright",
+        44, 1014, 16, "#586981"
+      );
+
+      const legendItems = [
+        { color: COLORS.green, text: "S · Schule / Start", type: "dot" },
+        { color: COLORS.red, text: "E · EDEKA / Ziel", type: "dot" },
+        { color: COLORS.blue, text: "Eigene Knoten", type: "dot" },
+        { color: COLORS.purple, text: "H · Zuhause", type: "dot" },
+        { color: COLORS.red, text: "Baustelle", type: "dash" },
+        { color: COLORS.green, text: "Gefundener Pfad", type: "line" }
+      ];
+
+      let legendX = 44;
+
+      for (const item of legendItems) {
+        if (item.type === "dot") {
+          ctx.beginPath();
+          ctx.arc(legendX + 10, 1050, 9, 0, Math.PI * 2);
+          ctx.fillStyle = item.color;
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 5;
+          ctx.setLineDash(item.type === "dash" ? [7, 5] : []);
+          ctx.beginPath();
+          ctx.moveTo(legendX, 1050);
+          ctx.lineTo(legendX + 27, 1050);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        canvasText(ctx, item.text, legendX + 36, 1056, 18, COLORS.ink, 600);
+        legendX += item.type === "dot" ? 265 : 225;
+      }
+
+      const taskText = state.task < TASKS.length
+        ? `Aktuelle Aufgabe: ${TASKS[state.task].title}.`
+        : "Alle Aufgaben erledigt.";
+
+      canvasWrappedText(
+        ctx,
+        taskText + " " + $("progress-note").textContent,
+        44, 1100, 1596, 26, 18
+      );
+
+      canvasText(
+        ctx,
+        "Lernmodell – keine geprüfte Wegweisung. Linienkreuzungen sind ohne gemeinsamen Endknoten nicht verbunden.",
+        44, 1160, 16, "#586981"
+      );
+
+      return canvas;
+    }
+
+    function canvasToJPEG(canvas) {
+      return new Promise((resolve, reject) => {
+        try {
+          canvas.toBlob(blob => {
+            if (blob) resolve(blob);
+            else reject(new Error("Das Bild für die PDF konnte nicht erstellt werden."));
+          }, "image/jpeg", .95);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    /*
+      Kleiner eigener PDF-Writer:
+      Eine A4-Querformatseite mit einem eingebetteten JPEG.
+      Keine PDF-Bibliothek, kein Backend, kein Druckdialog.
+      Byte-Offsets der Querverweistabelle werden aus den echten Bytes berechnet.
+    */
+    async function createPDFBlob(canvas) {
+      const jpegBlob = await canvasToJPEG(canvas);
+      const jpeg = new Uint8Array(await jpegBlob.arrayBuffer());
+      const encoder = new TextEncoder();
+      const chunks = [];
+      const offsets = [0];
+      let length = 0;
+
+      function push(value) {
+        const bytes = typeof value === "string" ? encoder.encode(value) : value;
+        chunks.push(bytes);
+        length += bytes.byteLength;
+      }
+
+      function object(number, body) {
+        offsets[number] = length;
+        push(`${number} 0 obj\n${body}\nendobj\n`);
+      }
+
+      push("%PDF-1.4\n% Local worksheet export\n");
+
+      object(1, "<< /Type /Catalog /Pages 2 0 R >>");
+      object(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+
+      object(
+        3,
+        "<< /Type /Page /Parent 2 0 R " +
+        "/MediaBox [0 0 841.89 595.28] " +
+        "/Resources << /XObject << /Im0 4 0 R >> >> " +
+        "/Contents 5 0 R >>"
+      );
+
+      offsets[4] = length;
+      push(
+        `4 0 obj\n<< /Type /XObject /Subtype /Image ` +
+        `/Width ${canvas.width} /Height ${canvas.height} ` +
+        `/ColorSpace /DeviceRGB /BitsPerComponent 8 ` +
+        `/Filter /DCTDecode /Length ${jpeg.byteLength} >>\nstream\n`
+      );
+      push(jpeg);
+      push("\nendstream\nendobj\n");
+
+      const content = "q\n841.89 0 0 595.28 0 0 cm\n/Im0 Do\nQ\n";
+      const contentBytes = encoder.encode(content);
+
+      offsets[5] = length;
+      push(`5 0 obj\n<< /Length ${contentBytes.byteLength} >>\nstream\n`);
+      push(contentBytes);
+      push("endstream\nendobj\n");
+
+      const xrefOffset = length;
+      push("xref\n0 6\n0000000000 65535 f \n");
+
+      for (let number = 1; number <= 5; number++) {
+        push(`${String(offsets[number]).padStart(10, "0")} 00000 n \n`);
+      }
+
+      push(
+        `trailer\n<< /Size 6 /Root 1 0 R >>\n` +
+        `startxref\n${xrefOffset}\n%%EOF\n`
+      );
+
+      return new Blob(chunks, { type: "application/pdf" });
+    }
+
+    async function exportPDF(withoutMap) {
+      if (pdfBusy) return;
+      pdfBusy = true;
+
+      $("modal-close").disabled = true;
+      $("modal-footer").querySelectorAll("button").forEach(button => {
+        button.disabled = true;
+      });
+
+      let status = $("pdf-status");
+      if (!status) {
+        status = document.createElement("div");
+        status.id = "pdf-status";
+        status.className = "pdf-status";
+        status.setAttribute("role", "status");
+        $("modal-body").appendChild(status);
+      }
+
+      status.hidden = false;
+      status.textContent = withoutMap
+        ? "Deine PDF wird lokal erstellt …"
+        : "Kartenkacheln werden geprüft. Deine PDF wird lokal erstellt …";
+
+      try {
+        await sleep(50);
+
+        if (!withoutMap) await waitForMap();
+        if (document.fonts?.ready) await document.fonts.ready;
+
+        const canvas = drawPDFCanvas(withoutMap);
+        const blob = await createPDFBlob(canvas);
+
+        if (pdfURL) URL.revokeObjectURL(pdfURL);
+        pdfURL = URL.createObjectURL(blob);
+
+        const filename = withoutMap
+          ? "Graphen-in-der-Navigation-ohne-Karte.pdf"
+          : "Graphen-in-der-Navigation.pdf";
+
+        const download = document.createElement("a");
+        download.href = pdfURL;
+        download.download = filename;
+        download.hidden = true;
+        document.body.appendChild(download);
+        download.click();
+        download.remove();
+
+        pdfBusy = false;
+
+        showModal(
+          "✅ Deine PDF ist fertig",
+          `<p>Deine Lösung wurde als PDF erstellt und der Download wurde angefordert.</p>
+           <p>Falls dein Browser keinen automatischen Download startet, tippe hier:</p>
+           <p>
+             <a class="download-link" href="${pdfURL}" download="${filename}">
+               📄 PDF herunterladen
+             </a>
+           </p>
+           <div class="callout green">
+             Die PDF wurde auf deinem Gerät erstellt. Dein Graph wurde nicht hochgeladen.
+           </div>
+           <p class="small">
+             Je nach Tablet oder Browser öffnet sich zuerst eine PDF-Vorschau.
+             Dort kannst du die Datei auf deinem Gerät sichern.
+           </p>`,
+          [{ text: "Zurück zur Karte", className: "primary", action: closeModal }]
+        );
+      } catch (error) {
+        pdfBusy = false;
+
+        const explanation = error?.name === "SecurityError"
+          ? "Dein Browser erlaubt den Export des Kartenhintergrunds nicht. Du kannst den Graphen ohne Kartenhintergrund als PDF sichern."
+          : error?.message || "Der PDF-Export konnte nicht abgeschlossen werden.";
+
+        showModal(
+          "📄 PDF-Export noch nicht möglich",
+          `<p>${escapeHTML(explanation)}</p>
+           <div class="callout orange">
+             Es wird keine unvollständige Karte unbemerkt exportiert.
+             Prüfe die Verbindung und versuche es erneut – oder wähle bewusst
+             den Export ohne Kartenhintergrund.
+           </div>
+           <div id="pdf-status" class="pdf-status" role="status" hidden></div>`,
+          [
+            { text: "Zurück zur Karte", action: closeModal },
+            { text: "Erneut versuchen", action: () => exportPDF(false) },
+            { text: "PDF ohne Kartenhintergrund", className: "primary", action: () => exportPDF(true) }
+          ],
+          { kind: "pdf" }
+        );
+      } finally {
+        pdfBusy = false;
+        $("modal-close").disabled = false;
+      }
+    }
+
+    /* ---------- Start und Bedienereignisse ---------- */
+
+    function fitLocations() {
+      map.fitBounds(
+        L.latLngBounds(LOCATIONS.school.coords, LOCATIONS.store.coords),
+        {
+          paddingTopLeft: [65, 145],
+          paddingBottomRight: [65, 115],
+          maxZoom: 17,
+          animate: false
+        }
+      );
+    }
+
+    $("task-help").addEventListener("click", () => openTask(state.task));
+    $("tool-node").addEventListener("click", () => setMode("node"));
+    $("tool-edge").addEventListener("click", () => setMode("edge"));
+    $("tool-undo").addEventListener("click", undo);
+    $("tool-reset").addEventListener("click", askReset);
+    $("tool-check").addEventListener("click", checkPath);
+    $("tool-home").addEventListener("click", addHome);
+    $("tool-fit").addEventListener("click", fitLocations);
+    $("tool-glossary").addEventListener("click", () => openGlossary());
+    $("tool-pdf").addEventListener("click", openPDF);
+
+    const middle = L.latLngBounds(
+      LOCATIONS.school.coords,
+      LOCATIONS.store.coords
+    ).getCenter();
+
+    createNode({
+      id: START_ID,
+      label: "🏫",
+      kind: "school",
+      placed: false,
+      lat: middle.lat + .00022,
+      lng: middle.lng + .00022
+    });
+
+    createNode({
+      id: GOAL_ID,
+      label: "🛒",
+      kind: "store",
+      placed: false,
+      lat: middle.lat - .00022,
+      lng: middle.lng - .00022
+    });
+
+    updateGraph({ automatic: false });
+
+    requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false });
+      fitLocations();
+      openTask(0);
+    });
+
+    if ("ResizeObserver" in window) {
+      let resizePending = false;
+
+      const observer = new ResizeObserver(() => {
+        if (resizePending) return;
+        resizePending = true;
+
+        requestAnimationFrame(() => {
+          resizePending = false;
+          map.invalidateSize({ pan: false, animate: false });
+        });
+      });
+
+      observer.observe($("map"));
+    } else {
+      window.addEventListener("resize", () => map.invalidateSize({ pan: false }));
+    }
+  })();
+  </script>
+
+
+</body></html>
